@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLC Order Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="dash-header">
+  <div class="dash-header__inner">
+    <div class="login-brand">
+      <span class="hero__brand-mark">GLC</span>
+      <span class="login-brand__name">Order Dashboard</span>
+    </div>
+    <div class="dash-header__right">
+      <span id="userEmail" class="dash-header__email"></span>
+      <button id="logoutBtn" class="btn btn--ghost">লগআউট</button>
+    </div>
+  </div>
+</header>
+
+<main class="dash-main">
+
+  <div class="stat-row" id="statRow">
+    <div class="stat-card"><span class="stat-card__num" id="statPending">0</span><span class="stat-card__label">Pending</span></div>
+    <div class="stat-card"><span class="stat-card__num" id="statConfirmed">0</span><span class="stat-card__label">Confirmed</span></div>
+    <div class="stat-card"><span class="stat-card__num" id="statDelivered">0</span><span class="stat-card__label">Delivered</span></div>
+    <div class="stat-card"><span class="stat-card__num" id="statCancelled">0</span><span class="stat-card__label">Cancelled</span></div>
+  </div>
+
+  <div class="dash-toolbar">
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab is-active" data-status="all">সব</button>
+      <button class="filter-tab" data-status="pending_confirmation">Pending</button>
+      <button class="filter-tab" data-status="confirmed">Confirmed</button>
+      <button class="filter-tab" data-status="delivered">Delivered</button>
+      <button class="filter-tab" data-status="cancelled">Cancelled</button>
+    </div>
+    <input type="search" id="searchBox" placeholder="নাম / ফোন নাম্বার দিয়ে খুঁজুন…" class="search-box">
+    <button id="refreshBtn" class="btn btn--ghost">🔄 রিফ্রেশ</button>
+  </div>
+
+  <div id="ordersWrap">
+    <p id="loadingMsg" class="muted">লোড হচ্ছে…</p>
+    <div id="ordersList" class="orders-list"></div>
+    <p id="emptyMsg" class="muted" hidden>কোনো অর্ডার নেই।</p>
+  </div>
+
+</main>
+
+<!-- order detail / status-update modal -->
+<div id="orderModal" class="modal" hidden>
+  <div class="modal__backdrop" id="modalBackdrop"></div>
+  <div class="modal__card">
+    <button class="modal__close" id="modalClose">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
