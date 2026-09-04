@@ -122,10 +122,17 @@ function renderCard(order) {
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
     </div>
     <div class="order-card-row__actions">
-      <a href="tel:${escapeAttr(order.phone)}" class="btn btn--ghost btn--sm">📞 কল করুন</a>
+      <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">📋 নাম্বার কপি</button>
       <button class="btn btn--primary btn--sm" data-open="${order.id}">বিস্তারিত</button>
     </div>
   `;
+  card.querySelector("[data-copy-phone]").addEventListener("click", (e) => {
+    navigator.clipboard.writeText(order.phone);
+    const btn = e.currentTarget;
+    const original = btn.textContent;
+    btn.textContent = "✅ কপি হয়েছে";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
   card.querySelector("[data-open]").addEventListener("click", () => openModal(order));
   return card;
 }
