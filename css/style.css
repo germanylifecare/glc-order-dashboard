@@ -139,6 +139,13 @@ body { margin: 0; font-family: var(--font); background: var(--ink); color: var(-
 .modal__notes { margin-bottom: 16px; }
 .modal__notes label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
 .modal__notes textarea { width: 100%; min-height: 64px; background: var(--ink); border: 1px solid var(--card-border); color: var(--text); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 14px; }
+.modal__notes select {
+  width: 100%; background: var(--ink); border: 1px solid var(--card-border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 14px; outline: none;
+}
+.modal__notes select:focus { border-color: var(--tangerine); }
+.modal__grid a { color: var(--tangerine); text-decoration: none; font-weight: 600; }
+.modal__grid a:hover { text-decoration: underline; }
 .modal__status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 @media (max-width: 640px) {
