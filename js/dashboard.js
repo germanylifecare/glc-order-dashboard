@@ -140,7 +140,7 @@ function openModal(order) {
 
     <div class="modal__grid">
       <div><span class="modal__label">নাম</span><p>${escapeHtml(order.customer_name)}</p></div>
-      <div><span class="modal__label">ফোন</span><p><a href="tel:${escapeAttr(order.phone)}">${escapeHtml(order.phone)}</a></p></div>
+      <div><span class="modal__label">ফোন</span><p class="phone-copy"><span>${escapeHtml(order.phone)}</span><button type="button" class="copy-btn" id="copyPhoneBtn">📋 কপি</button></p></div>
       <div><span class="modal__label">জেলা</span><p>${escapeHtml(order.district)}</p></div>
       <div><span class="modal__label">কোয়ান্টিটি</span><p>${order.quantity} পিস</p></div>
       <div class="modal__grid-full"><span class="modal__label">ঠিকানা</span><p>${escapeHtml(order.address)}</p></div>
@@ -192,6 +192,13 @@ function openModal(order) {
     <button class="btn btn--primary btn--block" id="updateStatusBtn">স্ট্যাটাস আপডেট করুন</button>
     <p id="modalStatusMsg" class="form-status"></p>
   `;
+
+  document.getElementById("copyPhoneBtn").addEventListener("click", () => {
+    navigator.clipboard.writeText(order.phone);
+    const btn = document.getElementById("copyPhoneBtn");
+    btn.textContent = "✅ কপি হয়েছে";
+    setTimeout(() => { btn.textContent = "📋 কপি"; }, 1500);
+  });
 
   document.getElementById("courierSelect").value = order.courier || "";
   document.getElementById("statusSelect").value = order.status;

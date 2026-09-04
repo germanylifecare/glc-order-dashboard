@@ -146,6 +146,12 @@ body { margin: 0; font-family: var(--font); background: var(--ink); color: var(-
 .modal__notes select:focus { border-color: var(--tangerine); }
 .modal__grid a { color: var(--tangerine); text-decoration: none; font-weight: 600; }
 .modal__grid a:hover { text-decoration: underline; }
+.phone-copy { display: flex; align-items: center; gap: 8px; }
+.copy-btn {
+  background: var(--card); border: 1px solid var(--card-border); color: var(--tangerine);
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.copy-btn:hover { border-color: var(--tangerine); }
 .modal__status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 @media (max-width: 640px) {
