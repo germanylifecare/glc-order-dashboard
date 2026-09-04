@@ -2,9 +2,16 @@ const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE
 
 const STATUS_LABELS = {
   pending_confirmation: "Pending",
+  followup: "Followup",
   confirmed: "Confirmed",
+  ready_to_ship: "Ready To Ship",
+  shipped: "Shipped",
+  hold_by_courier: "Hold By Courier",
   delivered: "Delivered",
-  cancelled: "Cancelled",
+  payment_received: "Payment Received",
+  returned: "Returned",
+  cancelled: "Canceled",
+  unresolved: "Unresolved",
 };
 
 let currentUser = null;
@@ -148,20 +155,51 @@ function openModal(order) {
     </div>
 
     <div class="modal__notes">
+      <label for="courierSelect">কুরিয়ার</label>
+      <select id="courierSelect">
+        <option value="">-- বাছাই করুন --</option>
+        <option value="Pathao">Pathao</option>
+        <option value="Steadfast">Steadfast</option>
+        <option value="RedX">RedX</option>
+        <option value="Sundarban Courier">Sundarban Courier</option>
+        <option value="eCourier">eCourier</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="modal__notes">
       <label for="notesInput">সেলস নোট</label>
       <textarea id="notesInput">${escapeHtml(order.notes || "")}</textarea>
     </div>
 
-    <div class="modal__status-actions">
-      <button class="btn btn--sm status-btn" data-status="confirmed">✅ Confirm</button>
-      <button class="btn btn--sm status-btn" data-status="delivered">📦 Delivered</button>
-      <button class="btn btn--sm status-btn status-btn--danger" data-status="cancelled">❌ Cancel</button>
+    <div class="modal__notes">
+      <label for="statusSelect">স্ট্যাটাস</label>
+      <select id="statusSelect">
+        <option value="pending_confirmation">Pending</option>
+        <option value="followup">Followup</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="ready_to_ship">Ready To Ship</option>
+        <option value="shipped">Shipped</option>
+        <option value="hold_by_courier">Hold By Courier</option>
+        <option value="delivered">Delivered</option>
+        <option value="payment_received">Payment Received</option>
+        <option value="returned">Returned</option>
+        <option value="cancelled">Canceled</option>
+        <option value="unresolved">Unresolved</option>
+      </select>
     </div>
+
+    <button class="btn btn--primary btn--block" id="updateStatusBtn">স্ট্যাটাস আপডেট করুন</button>
     <p id="modalStatusMsg" class="form-status"></p>
   `;
 
-  body.querySelectorAll(".status-btn").forEach(btn => {
-    btn.addEventListener("click", () => updateStatus(order.id, btn.dataset.status));
+  document.getElementById("courierSelect").value = order.courier || "";
+  document.getElementById("statusSelect").value = order.status;
+
+  document.getElementById("updateStatusBtn").addEventListener("click", () => {
+    const newStatus = document.getElementById("statusSelect").value;
+    const courier = document.getElementById("courierSelect").value;
+    updateStatus(order.id, newStatus, courier);
   });
 
   modal.hidden = false;
@@ -171,7 +209,7 @@ function closeModal() {
   document.getElementById("orderModal").hidden = true;
 }
 
-async function updateStatus(orderId, newStatus) {
+async function updateStatus(orderId, newStatus, courier) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = "আপডেট হচ্ছে…";
@@ -179,7 +217,7 @@ async function updateStatus(orderId, newStatus) {
 
   const { error } = await client
     .from("orders")
-    .update({ status: newStatus, notes, confirmed_by: currentUser.email })
+    .update({ status: newStatus, notes, courier, confirmed_by: currentUser.email })
     .eq("id", orderId);
 
   if (error) {

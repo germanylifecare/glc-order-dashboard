@@ -110,6 +110,13 @@ body { margin: 0; font-family: var(--font); background: var(--ink); color: var(-
 .status-badge--confirmed { background: rgba(51,199,126,0.18); color: var(--success); }
 .status-badge--delivered { background: rgba(85,140,255,0.18); color: #7fa5ff; }
 .status-badge--cancelled { background: rgba(255,92,92,0.18); color: var(--danger); }
+.status-badge--followup { background: rgba(255,201,74,0.12); color: #ffb84a; }
+.status-badge--ready_to_ship { background: rgba(139,92,246,0.18); color: #a78bfa; }
+.status-badge--shipped { background: rgba(85,140,255,0.18); color: #7fa5ff; }
+.status-badge--hold_by_courier { background: rgba(255,140,60,0.18); color: #ff9f5c; }
+.status-badge--payment_received { background: rgba(51,199,126,0.18); color: var(--success); }
+.status-badge--returned { background: rgba(255,92,92,0.14); color: #ff8080; }
+.status-badge--unresolved { background: rgba(166,172,194,0.18); color: var(--text-dim); }
 
 /* ---------- Modal ---------- */
 .modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
