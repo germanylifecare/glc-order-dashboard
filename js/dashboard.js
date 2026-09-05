@@ -377,8 +377,8 @@ function openModal(order) {
 
     <div class="modal__payment">
       <h4>${t("paymentVerification")} (${order.payment_method})</h4>
-      <p>${t("senderNumber")}: <b>${escapeHtml(order.sender_number)}</b></p>
-      <p>TrxID: <b>${escapeHtml(order.trx_id)}</b></p>
+      <p>${t("senderNumber")}: <b>${order.sender_number ? escapeHtml(order.sender_number) : t("notProvided")}</b></p>
+      <p>TrxID: <b>${order.trx_id ? escapeHtml(order.trx_id) : t("notProvided")}</b></p>
       <p class="muted">${t("paymentNote")}</p>
       <p>${t("productTotal")}: ৳<span id="calcProductTotal">${order.product_total}</span> + ${t("delivery")}: ৳${order.delivery_charge} = <b>৳<span id="calcGrandTotal">${order.grand_total}</span></b></p>
     </div>

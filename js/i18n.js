@@ -49,6 +49,7 @@ const I18N = {
     convertLeadTitle: "Lead থেকে অর্ডার কনভার্ট",
     paymentMethodLabel: "পেমেন্ট মাধ্যম",
     fillAllFields: "সব ঘর পূরণ করুন।",
+    notProvided: "এখনো দেওয়া হয়নি — কল করে জিজ্ঞেস করুন",
   },
   en: {
     logout: "Logout",
@@ -96,6 +97,7 @@ const I18N = {
     convertLeadTitle: "Convert Lead to Order",
     paymentMethodLabel: "Payment Method",
     fillAllFields: "Please fill all fields.",
+    notProvided: "Not provided yet — ask on the call",
   },
 };
 
