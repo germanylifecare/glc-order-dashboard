@@ -17,7 +17,8 @@
     </div>
     <div class="dash-header__right">
       <span id="userEmail" class="dash-header__email"></span>
-      <button id="logoutBtn" class="btn btn--ghost">লগআউট</button>
+      <button id="langToggleBtn" class="btn btn--ghost btn--sm">EN</button>
+      <button id="logoutBtn" class="btn btn--ghost" data-i18n="logout">লগআউট</button>
     </div>
   </div>
 </header>
@@ -46,19 +47,18 @@
       <button class="filter-tab" data-status="cancelled">Canceled</button>
       <button class="filter-tab" data-status="unresolved">Unresolved</button>
     </div>
-    <input type="search" id="searchBox" placeholder="নাম / ফোন নাম্বার দিয়ে খুঁজুন…" class="search-box">
-    <button id="refreshBtn" class="btn btn--ghost">🔄 রিফ্রেশ</button>
+    <input type="search" id="searchBox" placeholder="নাম / ফোন নাম্বার দিয়ে খুঁজুন…" class="search-box" data-i18n-placeholder="searchPlaceholder">
+    <button id="refreshBtn" class="btn btn--ghost" data-i18n="refresh">🔄 রিফ্রেশ</button>
   </div>
 
   <div id="ordersWrap">
-    <p id="loadingMsg" class="muted">লোড হচ্ছে…</p>
+    <p id="loadingMsg" class="muted" data-i18n="loading">লোড হচ্ছে…</p>
     <div id="ordersList" class="orders-list"></div>
-    <p id="emptyMsg" class="muted" hidden>কোনো অর্ডার নেই।</p>
+    <p id="emptyMsg" class="muted" hidden data-i18n="noOrders">কোনো অর্ডার নেই।</p>
   </div>
 
 </main>
 
-<!-- order detail / status-update modal -->
 <div id="orderModal" class="modal" hidden>
   <div class="modal__backdrop" id="modalBackdrop"></div>
   <div class="modal__card">
@@ -69,6 +69,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>
