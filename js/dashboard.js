@@ -61,7 +61,7 @@ async function loadOrders() {
   const { data, error } = await client
     .from("orders")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
   document.getElementById("loadingMsg").hidden = true;
 
@@ -144,6 +144,10 @@ function openModal(order) {
   body.innerHTML = `
     <h2 class="modal__title">অর্ডার #${order.id}</h2>
     <span class="status-badge status-badge--${order.status}">${STATUS_LABELS[order.status]}</span>
+    <p class="muted" style="text-align:left;padding:6px 0;font-size:12.5px;">
+      ${order.confirmed_by ? `✅ কনফার্ম করেছেন: <b>${escapeHtml(order.confirmed_by)}</b>` : "⏳ এখনো কেউ কনফার্ম করেননি"}
+      ${order.last_updated_by ? ` &nbsp;|&nbsp; 🔄 সর্বশেষ আপডেট: <b>${escapeHtml(order.last_updated_by)}</b>` : ""}
+    </p>
 
     <div class="modal__grid">
       <div><span class="modal__label">নাম</span><p>${escapeHtml(order.customer_name)}</p></div>
@@ -229,9 +233,18 @@ async function updateStatus(orderId, newStatus, courier) {
   msgEl.textContent = "আপডেট হচ্ছে…";
   msgEl.className = "form-status";
 
+  const { data: existing } = await client
+    .from("orders")
+    .select("confirmed_by")
+    .eq("id", orderId)
+    .single();
+
+  const updatePayload = { status: newStatus, notes, courier, last_updated_by: currentUser.email };
+  if (!existing?.confirmed_by) updatePayload.confirmed_by = currentUser.email;
+
   const { error } = await client
     .from("orders")
-    .update({ status: newStatus, notes, courier, confirmed_by: currentUser.email })
+    .update(updatePayload)
     .eq("id", orderId);
 
   if (error) {
