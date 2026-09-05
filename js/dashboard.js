@@ -150,11 +150,11 @@ function openModal(order) {
     </p>
 
     <div class="modal__grid">
-      <div><span class="modal__label">নাম</span><p>${escapeHtml(order.customer_name)}</p></div>
+      <div><span class="modal__label">নাম</span><input type="text" id="editName" class="modal__edit-input" value="${escapeAttr(order.customer_name)}"></div>
       <div><span class="modal__label">ফোন</span><p class="phone-copy"><span>${escapeHtml(order.phone)}</span><button type="button" class="copy-btn" id="copyPhoneBtn">📋 কপি</button></p></div>
-      <div><span class="modal__label">জেলা</span><p>${escapeHtml(order.district)}</p></div>
-      <div><span class="modal__label">কোয়ান্টিটি</span><p>${order.quantity} পিস</p></div>
-      <div class="modal__grid-full"><span class="modal__label">ঠিকানা</span><p>${escapeHtml(order.address)}</p></div>
+      <div><span class="modal__label">জেলা</span><input type="text" id="editDistrict" class="modal__edit-input" value="${escapeAttr(order.district)}"></div>
+      <div><span class="modal__label">কোয়ান্টিটি</span><input type="number" id="editQuantity" class="modal__edit-input" min="1" value="${order.quantity}"></div>
+      <div class="modal__grid-full"><span class="modal__label">ঠিকানা</span><textarea id="editAddress" class="modal__edit-input" rows="2">${escapeHtml(order.address)}</textarea></div>
     </div>
 
     <div class="modal__payment">
@@ -162,7 +162,7 @@ function openModal(order) {
       <p>পাঠানো নাম্বার: <b>${escapeHtml(order.sender_number)}</b></p>
       <p>TrxID: <b>${escapeHtml(order.trx_id)}</b></p>
       <p class="muted">⚠️ dashboard-এ শুধু কাস্টমারের দেওয়া তথ্য দেখানো হচ্ছে — bKash/Nagad অ্যাপ/SMS-এ গিয়ে TrxID মিলিয়ে নিশ্চিত করুন এটা আসল পেমেন্ট কিনা, তারপর Confirm করুন।</p>
-      <p>প্রোডাক্ট মূল্য: ৳${order.product_total} + ডেলিভারি: ৳${order.delivery_charge} = <b>৳${order.grand_total}</b></p>
+      <p>প্রোডাক্ট মূল্য: ৳<span id="calcProductTotal">${order.product_total}</span> + ডেলিভারি: ৳${order.delivery_charge} = <b>৳<span id="calcGrandTotal">${order.grand_total}</span></b></p>
     </div>
 
     <div class="modal__notes">
@@ -214,10 +214,24 @@ function openModal(order) {
   document.getElementById("courierSelect").value = order.courier || "";
   document.getElementById("statusSelect").value = order.status;
 
+  document.getElementById("editQuantity").addEventListener("input", (e) => {
+    const qty = parseInt(e.target.value || "1", 10);
+    const productTotal = qty * order.unit_price;
+    const grandTotal = productTotal + order.delivery_charge;
+    document.getElementById("calcProductTotal").textContent = productTotal;
+    document.getElementById("calcGrandTotal").textContent = grandTotal;
+  });
+
   document.getElementById("updateStatusBtn").addEventListener("click", () => {
     const newStatus = document.getElementById("statusSelect").value;
     const courier = document.getElementById("courierSelect").value;
-    updateStatus(order.id, newStatus, courier);
+    const editedFields = {
+      customer_name: document.getElementById("editName").value.trim(),
+      district: document.getElementById("editDistrict").value.trim(),
+      address: document.getElementById("editAddress").value.trim(),
+      quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
+    };
+    updateStatus(order.id, newStatus, courier, editedFields, order.unit_price, order.delivery_charge);
   });
 
   modal.hidden = false;
@@ -227,7 +241,7 @@ function closeModal() {
   document.getElementById("orderModal").hidden = true;
 }
 
-async function updateStatus(orderId, newStatus, courier) {
+async function updateStatus(orderId, newStatus, courier, editedFields, unitPrice, deliveryCharge) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = "আপডেট হচ্ছে…";
@@ -239,7 +253,21 @@ async function updateStatus(orderId, newStatus, courier) {
     .eq("id", orderId)
     .single();
 
-  const updatePayload = { status: newStatus, notes, courier, last_updated_by: currentUser.email };
+  const productTotal = unitPrice * editedFields.quantity;
+  const grandTotal = productTotal + deliveryCharge;
+
+  const updatePayload = {
+    status: newStatus,
+    notes,
+    courier,
+    last_updated_by: currentUser.email,
+    customer_name: editedFields.customer_name,
+    district: editedFields.district,
+    address: editedFields.address,
+    quantity: editedFields.quantity,
+    product_total: productTotal,
+    grand_total: grandTotal,
+  };
   if (!existing?.confirmed_by) updatePayload.confirmed_by = currentUser.email;
 
   const { error } = await client

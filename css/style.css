@@ -133,6 +133,12 @@ body { margin: 0; font-family: var(--font); background: var(--ink); color: var(-
 .modal__grid-full { grid-column: 1 / -1; }
 .modal__label { font-size: 11.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .3px; }
 .modal__grid p { margin: 2px 0 0; font-size: 14.5px; }
+.modal__edit-input {
+  width: 100%; background: var(--ink); border: 1px solid var(--card-border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 8px 10px; font-family: inherit; font-size: 14px; outline: none; margin-top: 2px;
+  font-weight: 700; font-size: 14.5px;
+}
+.modal__edit-input:focus { border-color: var(--tangerine); }
 .modal__payment { background: var(--ink); border: 1px dashed var(--card-border); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 16px; }
 .modal__payment h4 { margin: 0 0 8px; font-size: 14px; }
 .modal__payment p { margin: 4px 0; font-size: 13.5px; }
