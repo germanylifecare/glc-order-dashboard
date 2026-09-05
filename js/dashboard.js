@@ -303,7 +303,8 @@ function onLangChange() {
 // ---------- helpers ----------
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleString("bn-BD", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  const locale = getLang() === "en" ? "en-US" : "bn-BD";
+  return d.toLocaleString(locale, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
