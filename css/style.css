@@ -206,9 +206,14 @@ body {
 .modal__status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- Liquid Glass shine layer (specular highlight polish) ---------- */
-.stat-card, .order-card-row, .modal__card, .login-card {
+.stat-card, .order-card-row, .login-card {
   position: relative;
   overflow: hidden;
+}
+.modal__card {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .stat-card::before, .order-card-row::before, .modal__card::before, .login-card::before {
   content: "";
