@@ -42,6 +42,13 @@ const I18N = {
     password: "পাসওয়ার্ড",
     loginBtn: "লগইন করুন",
     detailsBtn: "বিস্তারিত",
+    abandonedLeadsTab: "Abandoned Leads",
+    leadBadge: "Abandoned Lead",
+    noLeads: "কোনো Abandoned Lead নেই।",
+    convertBtn: "অর্ডারে কনভার্ট করুন",
+    convertLeadTitle: "Lead থেকে অর্ডার কনভার্ট",
+    paymentMethodLabel: "পেমেন্ট মাধ্যম",
+    fillAllFields: "সব ঘর পূরণ করুন।",
   },
   en: {
     logout: "Logout",
@@ -82,6 +89,13 @@ const I18N = {
     password: "Password",
     loginBtn: "Log In",
     detailsBtn: "Details",
+    abandonedLeadsTab: "Abandoned Leads",
+    leadBadge: "Abandoned Lead",
+    noLeads: "No abandoned leads found.",
+    convertBtn: "Convert to Order",
+    convertLeadTitle: "Convert Lead to Order",
+    paymentMethodLabel: "Payment Method",
+    fillAllFields: "Please fill all fields.",
   },
 };
 

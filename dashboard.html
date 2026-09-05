@@ -46,6 +46,7 @@
       <button class="filter-tab" data-status="returned">Returned</button>
       <button class="filter-tab" data-status="cancelled">Canceled</button>
       <button class="filter-tab" data-status="unresolved">Unresolved</button>
+      <button class="filter-tab" data-status="leads" data-i18n="abandonedLeadsTab">Abandoned Leads</button>
     </div>
     <input type="search" id="searchBox" placeholder="নাম / ফোন নাম্বার দিয়ে খুঁজুন…" class="search-box" data-i18n-placeholder="searchPlaceholder">
     <button id="refreshBtn" class="btn btn--ghost" data-i18n="refresh">🔄 রিফ্রেশ</button>
@@ -64,6 +65,14 @@
   <div class="modal__card">
     <button class="modal__close" id="modalClose">✕</button>
     <div id="modalBody"></div>
+  </div>
+</div>
+
+<div id="leadModal" class="modal" hidden>
+  <div class="modal__backdrop" id="leadModalBackdrop"></div>
+  <div class="modal__card">
+    <button class="modal__close" id="leadModalClose">✕</button>
+    <div id="leadModalBody"></div>
   </div>
 </div>
 
