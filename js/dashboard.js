@@ -376,7 +376,7 @@ function openModal(order) {
     </div>
 
     <div class="modal__payment">
-      <h4>${t("paymentVerification")} (${order.payment_method})</h4>
+      <h4>${t("paymentVerification")}${order.payment_method ? ` (${order.payment_method})` : ""}</h4>
       <p>${t("senderNumber")}: <b>${order.sender_number ? escapeHtml(order.sender_number) : t("notProvided")}</b></p>
       <p>TrxID: <b>${order.trx_id ? escapeHtml(order.trx_id) : t("notProvided")}</b></p>
       <p class="muted">${t("paymentNote")}</p>
