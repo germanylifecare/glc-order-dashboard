@@ -37,6 +37,7 @@ async function boot() {
   }
   currentUser = session.user;
   document.getElementById("userEmail").textContent = currentUser.email;
+  loadSteadfastBalance();
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await client.auth.signOut();
@@ -72,6 +73,26 @@ async function boot() {
   document.getElementById("leadModalClose").addEventListener("click", closeLeadModal);
 
   await loadOrders();
+}
+
+async function loadSteadfastBalance() {
+  const el = document.getElementById("steadfastBalance");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/steadfast-balance");
+    const data = await res.json();
+    if (typeof data.current_balance === "number") {
+      const bal = data.current_balance;
+      el.textContent = `Steadfast: ৳${bal}`;
+      el.style.color = bal < 0 ? "var(--danger)" : "var(--success)";
+      el.style.fontWeight = "700";
+    } else {
+      el.textContent = "Steadfast: N/A";
+    }
+  } catch (err) {
+    console.error("Steadfast balance fetch failed:", err);
+    el.textContent = "Steadfast: Error";
+  }
 }
 
 async function loadOrders() {
