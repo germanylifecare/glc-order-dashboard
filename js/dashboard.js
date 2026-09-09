@@ -383,18 +383,7 @@ function openModal(order) {
       <p>${t("productTotal")}: ৳<span id="calcProductTotal">${order.product_total}</span> + ${t("delivery")}: ৳${order.delivery_charge} = <b>৳<span id="calcGrandTotal">${order.grand_total}</span></b></p>
     </div>
 
-    <div class="modal__notes">
-      <label for="courierSelect">${t("courier")}</label>
-      <select id="courierSelect">
-        <option value="">${t("courierPlaceholder")}</option>
-        <option value="Pathao">Pathao</option>
-        <option value="Steadfast">Steadfast</option>
-        <option value="RedX">RedX</option>
-        <option value="Sundarban Courier">Sundarban Courier</option>
-        <option value="eCourier">eCourier</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
+
 
     <div class="modal__notes">
       <label for="notesInput">${t("salesNotes")}</label>
@@ -429,7 +418,7 @@ function openModal(order) {
     setTimeout(() => { btn.textContent = t("copy"); }, 1500);
   });
 
-  document.getElementById("courierSelect").value = order.courier || "";
+
   document.getElementById("statusSelect").value = order.status;
 
   document.getElementById("editQuantity").addEventListener("input", (e) => {
@@ -442,14 +431,14 @@ function openModal(order) {
 
   document.getElementById("updateStatusBtn").addEventListener("click", () => {
     const newStatus = document.getElementById("statusSelect").value;
-    const courier = document.getElementById("courierSelect").value;
+
     const editedFields = {
       customer_name: document.getElementById("editName").value.trim(),
       district: document.getElementById("editDistrict").value.trim(),
       address: document.getElementById("editAddress").value.trim(),
       quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
     };
-    updateStatus(order.id, newStatus, courier, editedFields, order.unit_price, order.delivery_charge);
+    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge);
   });
 
   modal.hidden = false;
@@ -460,7 +449,7 @@ function closeModal() {
   currentModalOrder = null;
 }
 
-async function updateStatus(orderId, newStatus, courier, editedFields, unitPrice, deliveryCharge) {
+async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = t("updating");
@@ -478,7 +467,6 @@ async function updateStatus(orderId, newStatus, courier, editedFields, unitPrice
   const updatePayload = {
     status: newStatus,
     notes,
-    courier,
     last_updated_by: currentUser.email,
     customer_name: editedFields.customer_name,
     district: editedFields.district,
