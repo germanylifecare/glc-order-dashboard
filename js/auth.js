@@ -3,12 +3,26 @@ const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await client.auth.getSession();
   if (session) {
-    window.location.href = "dashboard.html";
+    await redirectByRole(session.user);
     return;
   }
 
   document.getElementById("loginForm").addEventListener("submit", onLogin);
 });
+
+async function redirectByRole(user) {
+  const { data: profile, error } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!error && profile && profile.role === "packaging") {
+    window.location.href = "packaging.html";
+  } else {
+    window.location.href = "dashboard.html";
+  }
+}
 
 async function onLogin(e) {
   e.preventDefault();
@@ -22,7 +36,7 @@ async function onLogin(e) {
   status.textContent = "";
   status.className = "form-status";
 
-  const { error } = await client.auth.signInWithPassword({ email, password });
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
     status.textContent = "ইমেইল অথবা পাসওয়ার্ড ভুল।";
@@ -32,5 +46,5 @@ async function onLogin(e) {
     return;
   }
 
-  window.location.href = "dashboard.html";
+  await redirectByRole(data.user);
 }
