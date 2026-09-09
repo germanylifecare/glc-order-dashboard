@@ -33,7 +33,6 @@ async function boot() {
   }
 
   if (profile.role !== "packaging" && profile.role !== "admin") {
-    // sales role has no business here — send back to the sales dashboard
     window.location.href = "dashboard.html";
     return;
   }
@@ -54,8 +53,8 @@ async function boot() {
 
   document.querySelectorAll(".filter-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
+      document.querySelectorAll(".filter-tab").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
       activeFilter = btn.dataset.filter;
       renderOrders();
     });
@@ -86,7 +85,7 @@ async function loadOrders() {
 
   if (error) {
     console.error("Load orders failed:", error);
-    document.getElementById("ordersList").textContent = "Error loading orders. Refresh kore dekho.";
+    document.getElementById("ordersList").innerHTML = `<p class="muted">Error loading orders. Refresh kore dekho.</p>`;
     return;
   }
 
@@ -115,7 +114,7 @@ function renderOrders() {
   const container = document.getElementById("ordersList");
 
   if (list.length === 0) {
-    container.innerHTML = `<p style="padding:24px; text-align:center; color:#777;">Kono order nai ei filter e.</p>`;
+    container.innerHTML = `<p class="muted">Kono order nai ei filter e.</p>`;
     updateBulkBar();
     return;
   }
@@ -124,17 +123,15 @@ function renderOrders() {
     .map((o) => {
       const checked = selectedIds.has(o.id) ? "checked" : "";
       return `
-        <div class="order-card order-card-row" data-id="${o.id}">
+        <div class="order-card-row" data-id="${o.id}">
           <input type="checkbox" class="order-checkbox" data-id="${o.id}" ${checked} />
-          <div style="flex:1;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <div style="flex:1; min-width:0;">
+            <div class="order-card-row__top">
               <span class="status-badge status-badge--${o.status}">${o.status === "packed" ? "PACKED" : "CONFIRMED"}</span>
-              <strong>${escapeHtml(o.customer_name)}</strong>
+              <p class="order-card-row__name">${escapeHtml(o.customer_name)}</p>
             </div>
-            <div style="color:#555; font-size:14px;">
-              ${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}
-            </div>
-            <div style="color:#777; font-size:13px;">${escapeHtml(o.address)}</div>
+            <p class="order-card-row__meta">${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}</p>
+            <p class="order-card-row__address">${escapeHtml(o.address)}</p>
           </div>
         </div>
       `;
@@ -162,7 +159,6 @@ function updateBulkBar() {
   document.getElementById("selectedCount").textContent = `${count} selected`;
   bar.classList.toggle("active", count > 0);
 
-  // Only "confirmed" orders can move to "packed" — disable button if selection has none eligible
   const eligible = [...selectedIds].some((id) => {
     const order = allOrders.find((o) => o.id === id);
     return order && order.status === "confirmed";
