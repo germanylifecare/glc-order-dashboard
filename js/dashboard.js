@@ -8,6 +8,7 @@ const STATUS_LABELS = {
   pending_confirmation: "Pending",
   followup: "Followup",
   confirmed: "Confirmed",
+  packed: "Packed",
   ready_to_ship: "Ready To Ship",
   shipped: "Shipped",
   hold_by_courier: "Hold By Courier",
@@ -396,6 +397,7 @@ function openModal(order) {
         <option value="pending_confirmation">Pending</option>
         <option value="followup">Followup</option>
         <option value="confirmed">Confirmed</option>
+        <option value="packed">Packed</option>
         <option value="ready_to_ship">Ready To Ship</option>
         <option value="shipped">Shipped</option>
         <option value="hold_by_courier">Hold By Courier</option>
