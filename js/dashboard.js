@@ -405,7 +405,14 @@ function openModal(order) {
       <p>${t("productTotal")}: ৳<span id="calcProductTotal">${order.product_total}</span> + ${t("delivery")}: ৳${order.delivery_charge} = <b>৳<span id="calcGrandTotal">${order.grand_total}</span></b></p>
     </div>
 
-
+    <div class="modal__notes">
+      <label for="advanceTypeSelect">Advance Type</label>
+      <select id="advanceTypeSelect">
+        <option value="none">কোনো Advance নেয়া হয়নি (Full COD)</option>
+        <option value="delivery_only">শুধু Delivery Charge Advance নেয়া হয়েছে</option>
+        <option value="full">Full Payment Advance নেয়া হয়েছে</option>
+      </select>
+    </div>
 
     <div class="modal__notes">
       <label for="notesInput">${t("salesNotes")}</label>
@@ -443,6 +450,7 @@ function openModal(order) {
 
 
   document.getElementById("statusSelect").value = order.status;
+  document.getElementById("advanceTypeSelect").value = order.advance_type || "none";
 
   document.getElementById("editQuantity").addEventListener("input", (e) => {
     const qty = parseInt(e.target.value || "1", 10);
@@ -461,7 +469,8 @@ function openModal(order) {
       address: document.getElementById("editAddress").value.trim(),
       quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
     };
-    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge);
+    const advanceType = document.getElementById("advanceTypeSelect").value;
+    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType);
   });
 
   modal.hidden = false;
@@ -472,7 +481,7 @@ function closeModal() {
   currentModalOrder = null;
 }
 
-async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge) {
+async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = t("updating");
@@ -497,6 +506,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     quantity: editedFields.quantity,
     product_total: productTotal,
     grand_total: grandTotal,
+    advance_type: advanceType,
   };
   if (!existing?.confirmed_by) updatePayload.confirmed_by = currentUser.email;
 
