@@ -439,6 +439,19 @@ function openModal(order) {
 
     <button class="btn btn--primary btn--block" id="updateStatusBtn">${t("updateStatusBtn")}</button>
     <p id="modalStatusMsg" class="form-status"></p>
+
+    <div class="modal__payment" style="margin-top:14px;">
+      <h4>🚚 Courier Shipment</h4>
+      ${order.consignment_id ? `
+        <p>✅ Shipment তৈরি হয়ে গেছে — Tracking Code: <b>${escapeHtml(order.tracking_code || "")}</b></p>
+        <p class="muted">Consignment ID: ${escapeHtml(order.consignment_id)}</p>
+      ` : order.status === "packed" ? `
+        <button class="btn btn--primary btn--block" id="createShipmentBtn" type="button">Create Shipment (Steadfast)</button>
+        <p id="shipmentStatusMsg" class="form-status"></p>
+      ` : `
+        <p class="muted">Order "Packed" status-এ গেলে shipment তৈরি করার বাটন এখানে আসবে।</p>
+      `}
+    </div>
   `;
 
   document.getElementById("copyPhoneBtn").addEventListener("click", () => {
@@ -451,6 +464,11 @@ function openModal(order) {
 
   document.getElementById("statusSelect").value = order.status;
   document.getElementById("advanceTypeSelect").value = order.advance_type || "none";
+
+  const createShipmentBtn = document.getElementById("createShipmentBtn");
+  if (createShipmentBtn) {
+    createShipmentBtn.addEventListener("click", () => createShipment(order));
+  }
 
   document.getElementById("editQuantity").addEventListener("input", (e) => {
     const qty = parseInt(e.target.value || "1", 10);
@@ -526,6 +544,77 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
   msgEl.className = "form-status success";
   await loadOrders();
   setTimeout(closeModal, 700);
+}
+
+async function createShipment(order) {
+  const msgEl = document.getElementById("shipmentStatusMsg");
+  const btn = document.getElementById("createShipmentBtn");
+
+  const name = document.getElementById("editName").value.trim();
+  const district = document.getElementById("editDistrict").value.trim();
+  const address = document.getElementById("editAddress").value.trim();
+  const quantity = document.getElementById("editQuantity").value;
+  const advanceType = document.getElementById("advanceTypeSelect").value;
+
+  const productTotal = Number(document.getElementById("calcProductTotal").textContent);
+  const grandTotal = Number(document.getElementById("calcGrandTotal").textContent);
+
+  let codAmount;
+  if (advanceType === "full") codAmount = 0;
+  else if (advanceType === "delivery_only") codAmount = productTotal;
+  else codAmount = grandTotal;
+
+  btn.disabled = true;
+  btn.textContent = "Creating...";
+  msgEl.textContent = "Steadfast-এ shipment তৈরি হচ্ছে...";
+  msgEl.className = "form-status";
+
+  try {
+    const res = await fetch("/api/steadfast-create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        invoice: String(order.id),
+        recipient_name: name,
+        recipient_phone: order.phone,
+        recipient_address: `${address}, ${district}`,
+        cod_amount: codAmount,
+        note: `Qty: ${quantity}`,
+      }),
+    });
+    const data = await res.json();
+
+    if (data.status !== 200 || !data.consignment) {
+      throw new Error(data.message || "Steadfast error");
+    }
+
+    const { consignment_id, tracking_code, status } = data.consignment;
+
+    const { error } = await client
+      .from("orders")
+      .update({
+        consignment_id: String(consignment_id),
+        tracking_code,
+        steadfast_status: status || "in_review",
+        status: "ready_to_ship",
+        shipped_at: new Date().toISOString(),
+        last_updated_by: currentUser.email,
+      })
+      .eq("id", order.id);
+
+    if (error) throw error;
+
+    msgEl.textContent = "✅ Shipment তৈরি হয়েছে! Tracking: " + tracking_code;
+    msgEl.className = "form-status success";
+    await loadOrders();
+    setTimeout(closeModal, 1000);
+  } catch (err) {
+    console.error("Create shipment failed:", err);
+    msgEl.textContent = "❌ ব্যর্থ হয়েছে: " + (err.message || "Unknown error");
+    msgEl.className = "form-status error";
+    btn.disabled = false;
+    btn.textContent = "Create Shipment (Steadfast)";
+  }
 }
 
 function onLangChange() {
