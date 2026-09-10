@@ -22,6 +22,7 @@ const STATUS_LABELS = {
 let currentUser = null;
 let allOrders = [];
 let allLeads = [];
+let allCancelledLeads = [];
 let activeFilter = "all";
 let searchTerm = "";
 let currentModalOrder = null;
@@ -71,6 +72,8 @@ async function boot() {
       activeFilter = btn.dataset.status;
       if (activeFilter === "leads") {
         loadLeads();
+      } else if (activeFilter === "cancelled_leads") {
+        loadCancelledLeads();
       } else {
         render();
       }
@@ -145,6 +148,26 @@ async function loadLeads() {
   renderLeadsList();
 }
 
+async function loadCancelledLeads() {
+  document.getElementById("loadingMsg").hidden = false;
+  const { data, error } = await client
+    .from("leads")
+    .select("*")
+    .eq("status", "cancelled")
+    .order("created_at", { ascending: true });
+
+  document.getElementById("loadingMsg").hidden = true;
+
+  if (error) {
+    console.error(error);
+    alert(t("loadError"));
+    return;
+  }
+
+  allCancelledLeads = data || [];
+  renderCancelledLeadsList();
+}
+
 function renderLeadsList() {
   let list = allLeads;
   if (searchTerm) {
@@ -183,6 +206,7 @@ function renderLeadCard(lead) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-lead="${lead.id}">${t("cancelBtn")}</button>
       <button class="btn btn--primary btn--sm" data-convert="${lead.id}">${t("convertBtn")}</button>
     </div>
   `;
@@ -193,8 +217,76 @@ function renderLeadCard(lead) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  card.querySelector("[data-cancel-lead]").addEventListener("click", () => cancelLead(lead));
   card.querySelector("[data-convert]").addEventListener("click", () => openLeadModal(lead));
   return card;
+}
+
+function renderCancelledLeadsList() {
+  let list = allCancelledLeads;
+  if (searchTerm) {
+    list = list.filter(l =>
+      (l.customer_name || "").toLowerCase().includes(searchTerm) ||
+      (l.phone || "").includes(searchTerm)
+    );
+  }
+
+  const wrap = document.getElementById("ordersList");
+  const emptyMsg = document.getElementById("emptyMsg");
+  wrap.innerHTML = "";
+
+  if (list.length === 0) {
+    emptyMsg.textContent = t("noCancelledLeads");
+    emptyMsg.hidden = false;
+    return;
+  }
+  emptyMsg.hidden = true;
+
+  list.forEach(lead => wrap.appendChild(renderCancelledLeadCard(lead)));
+}
+
+function renderCancelledLeadCard(lead) {
+  const card = document.createElement("div");
+  card.className = "order-card-row";
+  card.innerHTML = `
+    <div class="order-card-row__main">
+      <div class="order-card-row__top">
+        <span class="status-badge status-badge--cancelled">${t("cancelledLeadBadge")}</span>
+        <span class="order-card-row__time">${formatDate(lead.created_at)}</span>
+      </div>
+      <h3 class="order-card-row__name">${escapeHtml(lead.customer_name)}</h3>
+      <p class="order-card-row__meta">${escapeHtml(lead.phone)}${lead.district ? " · " + escapeHtml(lead.district) : ""}</p>
+      <p class="order-card-row__address">${escapeHtml(lead.address || "")}</p>
+    </div>
+    <div class="order-card-row__actions">
+      <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+    </div>
+  `;
+  card.querySelector("[data-copy-phone]").addEventListener("click", (e) => {
+    navigator.clipboard.writeText(lead.phone);
+    const btn = e.currentTarget;
+    const original = btn.textContent;
+    btn.textContent = t("copied");
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+  return card;
+}
+
+async function cancelLead(lead) {
+  if (!confirm(`${lead.customer_name} — ${t("cancelLeadConfirm")}`)) return;
+
+  const { error } = await client
+    .from("leads")
+    .update({ status: "cancelled" })
+    .eq("id", lead.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("cancelFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadLeads();
 }
 
 function openLeadModal(lead) {
@@ -385,6 +477,7 @@ function renderCard(order) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-order="${order.id}">${t("cancelBtn")}</button>
       <button class="btn btn--primary btn--sm" data-open="${order.id}">${t("detailsBtn")}</button>
     </div>
   `;
@@ -395,8 +488,26 @@ function renderCard(order) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  card.querySelector("[data-cancel-order]").addEventListener("click", () => quickCancelOrder(order));
   card.querySelector("[data-open]").addEventListener("click", () => openModal(order));
   return card;
+}
+
+async function quickCancelOrder(order) {
+  if (!confirm(`${order.customer_name} — ${t("cancelOrderConfirm")}`)) return;
+
+  const { error } = await client
+    .from("orders")
+    .update({ status: "cancelled", last_updated_by: currentUser.email })
+    .eq("id", order.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("cancelFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadOrders();
 }
 
 function openModal(order) {
@@ -642,6 +753,7 @@ async function createShipment(order) {
 
 function onLangChange() {
   if (activeFilter === "leads") renderLeadsList();
+  else if (activeFilter === "cancelled_leads") renderCancelledLeadsList();
   else render();
   if (currentModalOrder) openModal(currentModalOrder);
   if (currentModalLead) openLeadModal(currentModalLead);
