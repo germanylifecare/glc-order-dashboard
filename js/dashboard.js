@@ -687,6 +687,11 @@ function openModal(order) {
     </div>
 
     <div class="modal__notes">
+      <label for="handledByInput">${t("handledByLabel")}</label>
+      <input type="text" id="handledByInput" class="modal__edit-input" placeholder="${t("handledByPlaceholder")}" value="${escapeAttr(order.handled_by || "")}">
+    </div>
+
+    <div class="modal__notes">
       <label for="notesInput">${t("salesNotes")}</label>
       <textarea id="notesInput">${escapeHtml(order.notes || "")}</textarea>
     </div>
@@ -768,6 +773,7 @@ function openModal(order) {
       district: document.getElementById("editDistrict").value.trim(),
       address: document.getElementById("editAddress").value.trim(),
       quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
+      handled_by: document.getElementById("handledByInput").value.trim(),
     };
     const advanceType = document.getElementById("advanceTypeSelect").value;
     updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote);
@@ -804,6 +810,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     district: editedFields.district,
     address: editedFields.address,
     quantity: editedFields.quantity,
+    handled_by: editedFields.handled_by || null,
     product_total: productTotal,
     grand_total: grandTotal,
     advance_type: advanceType,
