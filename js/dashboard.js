@@ -284,16 +284,17 @@ function renderCancelledLeadCard(lead) {
 }
 
 async function cancelLead(lead) {
-  const reason = prompt(`${lead.customer_name} — ${t("cancelLeadConfirm")}\n\n${t("cancelReasonPrompt")}`);
+  const reason = await askReason({
+    title: t("cancelReasonModalTitle"),
+    subtitle: `${lead.customer_name} — ${t("cancelLeadConfirm")}`,
+    placeholder: t("cancelReasonPlaceholder"),
+    confirmLabel: t("confirmCancelBtn"),
+  });
   if (reason === null) return;
-  if (!reason.trim()) {
-    alert(t("cancelReasonRequired"));
-    return;
-  }
 
   const { error } = await client
     .from("leads")
-    .update({ status: "cancelled", cancel_reason: reason.trim() })
+    .update({ status: "cancelled", cancel_reason: reason })
     .eq("id", lead.id);
 
   if (error) {
@@ -323,12 +324,17 @@ async function restoreLead(lead) {
 }
 
 async function editLeadCancelReason(lead) {
-  const updated = prompt(t("editCancelReasonPrompt"), lead.cancel_reason || "");
+  const updated = await askReason({
+    title: t("editCancelReasonTitle"),
+    subtitle: lead.customer_name,
+    initialValue: lead.cancel_reason || "",
+    confirmLabel: t("saveBtn"),
+  });
   if (updated === null) return;
 
   const { error } = await client
     .from("leads")
-    .update({ cancel_reason: updated.trim() })
+    .update({ cancel_reason: updated })
     .eq("id", lead.id);
 
   if (error) {
@@ -553,19 +559,20 @@ function renderCard(order) {
 }
 
 async function quickCancelOrder(order) {
-  const reason = prompt(`${order.customer_name} — ${t("cancelOrderConfirm")}\n\n${t("cancelReasonPrompt")}`);
+  const reason = await askReason({
+    title: t("cancelReasonModalTitle"),
+    subtitle: `${order.customer_name} — ${t("cancelOrderConfirm")}`,
+    placeholder: t("cancelReasonPlaceholder"),
+    confirmLabel: t("confirmCancelBtn"),
+  });
   if (reason === null) return;
-  if (!reason.trim()) {
-    alert(t("cancelReasonRequired"));
-    return;
-  }
 
   const { error } = await client
     .from("orders")
     .update({
       status: "cancelled",
       previous_status: order.status,
-      cancel_reason: reason.trim(),
+      cancel_reason: reason,
       last_updated_by: currentUser.email,
     })
     .eq("id", order.id);
@@ -604,12 +611,17 @@ async function restoreOrder(order) {
 }
 
 async function editCancelReason(order) {
-  const updated = prompt(t("editCancelReasonPrompt"), order.cancel_reason || "");
+  const updated = await askReason({
+    title: t("editCancelReasonTitle"),
+    subtitle: order.customer_name,
+    initialValue: order.cancel_reason || "",
+    confirmLabel: t("saveBtn"),
+  });
   if (updated === null) return;
 
   const { error } = await client
     .from("orders")
-    .update({ cancel_reason: updated.trim(), last_updated_by: currentUser.email })
+    .update({ cancel_reason: updated, last_updated_by: currentUser.email })
     .eq("id", order.id);
 
   if (error) {
@@ -897,6 +909,67 @@ function onLangChange() {
 }
 
 // ---------- helpers ----------
+function askReason({ title, subtitle = "", placeholder = "", initialValue = "", confirmLabel, dismissLabel, required = true }) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("reasonModal");
+    const titleEl = document.getElementById("reasonModalTitle");
+    const subtitleEl = document.getElementById("reasonModalSubtitle");
+    const input = document.getElementById("reasonModalInput");
+    const errorEl = document.getElementById("reasonModalError");
+    const confirmBtn = document.getElementById("reasonModalConfirmBtn");
+    const cancelBtn = document.getElementById("reasonModalCancelBtn");
+    const backdrop = document.getElementById("reasonModalBackdrop");
+    const closeBtn = document.getElementById("reasonModalClose");
+
+    titleEl.textContent = title;
+    subtitleEl.textContent = subtitle;
+    subtitleEl.hidden = !subtitle;
+    input.value = initialValue;
+    input.placeholder = placeholder;
+    confirmBtn.textContent = confirmLabel || t("confirmCancelBtn");
+    cancelBtn.textContent = dismissLabel || t("modalDismissBtn");
+    errorEl.hidden = true;
+
+    modal.hidden = false;
+    setTimeout(() => input.focus(), 50);
+
+    function finish(result) {
+      modal.hidden = true;
+      confirmBtn.removeEventListener("click", onConfirm);
+      cancelBtn.removeEventListener("click", onDismiss);
+      backdrop.removeEventListener("click", onDismiss);
+      closeBtn.removeEventListener("click", onDismiss);
+      document.removeEventListener("keydown", onKeydown);
+      resolve(result);
+    }
+
+    function onConfirm() {
+      const val = input.value.trim();
+      if (required && !val) {
+        errorEl.textContent = t("cancelReasonRequired");
+        errorEl.hidden = false;
+        input.focus();
+        return;
+      }
+      finish(val);
+    }
+
+    function onDismiss() {
+      finish(null);
+    }
+
+    function onKeydown(e) {
+      if (e.key === "Escape") onDismiss();
+    }
+
+    confirmBtn.addEventListener("click", onConfirm);
+    cancelBtn.addEventListener("click", onDismiss);
+    backdrop.addEventListener("click", onDismiss);
+    closeBtn.addEventListener("click", onDismiss);
+    document.addEventListener("keydown", onKeydown);
+  });
+}
+
 function formatDate(iso) {
   const d = new Date(iso);
   const locale = getLang() === "en" ? "en-US" : "bn-BD";
