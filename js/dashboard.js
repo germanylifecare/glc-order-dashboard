@@ -361,6 +361,7 @@ function openLeadModal(lead) {
       <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(lead.phone)}</span></p></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="leadDistrict" class="modal__edit-input" value="${escapeAttr(lead.district || "")}"></div>
       <div><span class="modal__label">${t("quantity")}</span><input type="number" id="leadQuantity" class="modal__edit-input" min="1" value="${qty}"></div>
+      <div><span class="modal__label">${t("age")}</span><input type="number" id="leadAge" class="modal__edit-input" min="1" value="${lead.age || ""}"></div>
       <div class="modal__grid-full"><span class="modal__label">${t("address")}</span><textarea id="leadAddress" class="modal__edit-input" rows="2">${escapeHtml(lead.address || "")}</textarea></div>
     </div>
 
@@ -429,6 +430,8 @@ async function convertLead() {
   const senderNumber = document.getElementById("leadSenderNumber").value.trim();
   const trxId = document.getElementById("leadTrxId").value.trim();
   const handledBy = document.getElementById("leadHandledBy").value.trim();
+  const ageInput = document.getElementById("leadAge").value;
+  const age = ageInput ? parseInt(ageInput, 10) : null;
 
   if (!name || !district || !address || !handledBy) {
     msgEl.textContent = t("fillAllFields");
@@ -459,6 +462,7 @@ async function convertLead() {
       payment_method: paymentMethod,
       sender_number: senderNumber || null,
       trx_id: trxId || null,
+      age,
       handled_by: handledBy,
       status: "pending_confirmation",
       confirmed_by: currentUser.email,
@@ -666,6 +670,7 @@ function openModal(order) {
       <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(order.phone)}</span><button type="button" class="copy-btn" id="copyPhoneBtn">${t("copy")}</button></p></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="editDistrict" class="modal__edit-input" value="${escapeAttr(order.district)}"></div>
       <div><span class="modal__label">${t("quantity")}</span><input type="number" id="editQuantity" class="modal__edit-input" min="1" value="${order.quantity}"></div>
+      <div><span class="modal__label">${t("age")}</span><input type="number" id="editAge" class="modal__edit-input" min="1" value="${order.age || ""}"></div>
       <div class="modal__grid-full"><span class="modal__label">${t("address")}</span><textarea id="editAddress" class="modal__edit-input" rows="2">${escapeHtml(order.address)}</textarea></div>
     </div>
 
@@ -773,6 +778,7 @@ function openModal(order) {
       district: document.getElementById("editDistrict").value.trim(),
       address: document.getElementById("editAddress").value.trim(),
       quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
+      age: document.getElementById("editAge").value ? parseInt(document.getElementById("editAge").value, 10) : null,
       handled_by: document.getElementById("handledByInput").value.trim(),
     };
     const advanceType = document.getElementById("advanceTypeSelect").value;
@@ -810,6 +816,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     district: editedFields.district,
     address: editedFields.address,
     quantity: editedFields.quantity,
+    age: editedFields.age,
     handled_by: editedFields.handled_by || null,
     product_total: productTotal,
     grand_total: grandTotal,
