@@ -72,6 +72,7 @@ async function boot() {
 
   document.getElementById("markPackedBtn").addEventListener("click", markSelectedAsPacked);
   document.getElementById("shipAndPrintBtn").addEventListener("click", readyToShipAndPrint);
+  document.getElementById("reprintBtn").addEventListener("click", reprintSelectedLabels);
 
   await loadOrders();
 }
@@ -81,7 +82,7 @@ async function loadOrders() {
   const { data, error } = await client
     .from("orders")
     .select("*")
-    .in("status", ["confirmed", "packed"])
+    .in("status", ["confirmed", "packed", "ready_to_ship"])
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -111,6 +112,7 @@ function renderOrders() {
 
   document.getElementById("statConfirmed").textContent = allOrders.filter((o) => o.status === "confirmed").length;
   document.getElementById("statPacked").textContent = allOrders.filter((o) => o.status === "packed").length;
+  document.getElementById("statReadyToShip").textContent = allOrders.filter((o) => o.status === "ready_to_ship").length;
 
   const container = document.getElementById("ordersList");
 
@@ -123,15 +125,16 @@ function renderOrders() {
   container.innerHTML = list
     .map((o) => {
       const checked = selectedIds.has(o.id) ? "checked" : "";
+      const badgeLabel = o.status === "ready_to_ship" ? "READY TO SHIP" : o.status === "packed" ? "PACKED" : "CONFIRMED";
       return `
         <div class="order-card-row" data-id="${o.id}">
           <input type="checkbox" class="order-checkbox" data-id="${o.id}" ${checked} />
           <div style="flex:1; min-width:0;">
             <div class="order-card-row__top">
-              <span class="status-badge status-badge--${o.status}">${o.status === "packed" ? "PACKED" : "CONFIRMED"}</span>
+              <span class="status-badge status-badge--${o.status}">${badgeLabel}</span>
               <p class="order-card-row__name">${escapeHtml(o.customer_name)}</p>
             </div>
-            <p class="order-card-row__meta">${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}</p>
+            <p class="order-card-row__meta">${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}${o.consignment_id ? ` · Parcel ID: ${escapeHtml(o.consignment_id)}` : ""}</p>
             <p class="order-card-row__address">${escapeHtml(o.address)}</p>
           </div>
         </div>
@@ -171,6 +174,12 @@ function updateBulkBar() {
     return order && order.status === "packed" && !order.consignment_id;
   });
   document.getElementById("shipAndPrintBtn").disabled = !shipEligible;
+
+  const reprintEligible = [...selectedIds].some((id) => {
+    const order = allOrders.find((o) => o.id === id);
+    return order && order.status === "ready_to_ship" && order.consignment_id;
+  });
+  document.getElementById("reprintBtn").disabled = !reprintEligible;
 }
 
 async function markSelectedAsPacked() {
@@ -222,6 +231,8 @@ async function readyToShipAndPrint() {
 
   for (const id of idsToShip) {
     const order = allOrders.find((o) => o.id === id);
+    if (order.consignment_id) continue; // safety net: never re-create if already shipped
+
     const advanceType = order.advance_type || "none";
     let codAmount;
     if (advanceType === "full") codAmount = 0;
@@ -249,17 +260,35 @@ async function readyToShipAndPrint() {
 
       const { consignment_id, tracking_code, status } = data.consignment;
 
-      await client
-        .from("orders")
-        .update({
-          consignment_id: String(consignment_id),
-          tracking_code,
-          steadfast_status: status || "in_review",
-          status: "ready_to_ship",
-          shipped_at: new Date().toISOString(),
-          last_updated_by: currentUser.email,
-        })
-        .eq("id", order.id);
+      // Consignment already created in Steadfast at this point — irreversible.
+      // Save to DB with a retry, and lock this order in-memory either way so
+      // it can never be re-submitted (which would create a second consignment).
+      let saveError = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const { error: updateErr } = await client
+          .from("orders")
+          .update({
+            consignment_id: String(consignment_id),
+            tracking_code,
+            steadfast_status: status || "in_review",
+            status: "ready_to_ship",
+            shipped_at: new Date().toISOString(),
+            last_updated_by: currentUser.email,
+          })
+          .eq("id", order.id);
+        saveError = updateErr;
+        if (!saveError) break;
+      }
+
+      order.consignment_id = String(consignment_id);
+      order.status = "ready_to_ship";
+
+      if (saveError) {
+        console.error(`DB save failed after shipment creation for order #${order.id}:`, saveError);
+        alert(
+          `⚠️ জরুরি: Order #${order.id}-এর জন্য Steadfast-এ shipment তৈরি হয়ে গেছে (Parcel ID: ${consignment_id}), কিন্তু dashboard-এ সেভ করা যায়নি। এই order-এ আর "Ready to Ship" বাটন চাপবেন না — Admin-কে এখনই এই Parcel ID জানান।`
+        );
+      }
 
       shippedOrders.push({ ...order, consignment_id: String(consignment_id) });
     } catch (err) {
@@ -275,6 +304,15 @@ async function readyToShipAndPrint() {
   }
 
   await loadOrders();
+}
+
+function reprintSelectedLabels() {
+  const orders = [...selectedIds]
+    .map((id) => allOrders.find((o) => o.id === id))
+    .filter((o) => o && o.status === "ready_to_ship" && o.consignment_id);
+
+  if (orders.length === 0) return;
+  printLabels(orders);
 }
 
 function printLabels(orders) {

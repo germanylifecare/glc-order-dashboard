@@ -72,6 +72,10 @@
         <span class="stat-card__num" id="statPacked">0</span>
         <div class="stat-card__label">Packed (Ready to Ship e jabe)</div>
       </div>
+      <div class="stat-card">
+        <span class="stat-card__num" id="statReadyToShip">0</span>
+        <div class="stat-card__label">Ready to Ship (Shipped hoye gese)</div>
+      </div>
     </div>
 
     <div class="dash-toolbar">
@@ -79,6 +83,7 @@
         <button class="filter-tab is-active" data-filter="all">All</button>
         <button class="filter-tab" data-filter="confirmed">Confirmed</button>
         <button class="filter-tab" data-filter="packed">Packed</button>
+        <button class="filter-tab" data-filter="ready_to_ship">Ready to Ship</button>
       </div>
       <input type="text" id="searchInput" class="search-box" placeholder="Search by name / phone..." />
       <button id="refreshBtn" class="btn btn--ghost btn--sm">Refresh</button>
@@ -96,6 +101,7 @@
   <div class="bulk-action-bar" id="bulkActionBar">
     <span id="selectedCount">0 selected</span>
     <button id="markPackedBtn" class="btn btn--primary">Mark Selected as Packed</button>
+    <button id="reprintBtn" class="btn btn--ghost" disabled>🖨️ লেবেল রিপ্রিন্ট</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
