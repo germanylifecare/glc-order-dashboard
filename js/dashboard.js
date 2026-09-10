@@ -20,6 +20,7 @@ const STATUS_LABELS = {
 };
 
 let currentUser = null;
+let currentUserRole = null;
 let allOrders = [];
 let allLeads = [];
 let allCancelledLeads = [];
@@ -44,6 +45,8 @@ async function boot() {
     .select("role")
     .eq("id", currentUser.id)
     .single();
+
+  if (profile) currentUserRole = profile.role;
 
   if (profile && profile.role === "admin") {
     document.getElementById("steadfastBalance").hidden = false;
@@ -257,9 +260,11 @@ function renderCancelledLeadCard(lead) {
       <h3 class="order-card-row__name">${escapeHtml(lead.customer_name)}</h3>
       <p class="order-card-row__meta">${escapeHtml(lead.phone)}${lead.district ? " · " + escapeHtml(lead.district) : ""}</p>
       <p class="order-card-row__address">${escapeHtml(lead.address || "")}</p>
+      ${lead.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(lead.cancel_reason)}</p>` : ""}
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+      ${currentUserRole === "admin" ? `<button type="button" class="btn btn--ghost btn--sm" data-edit-reason="${lead.id}">${t("editBtn")}</button>` : ""}
       <button type="button" class="btn btn--ghost btn--sm btn--restore-ghost" data-restore-lead="${lead.id}">${t("restoreBtn")}</button>
     </div>
   `;
@@ -270,16 +275,25 @@ function renderCancelledLeadCard(lead) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  const editReasonBtn = card.querySelector("[data-edit-reason]");
+  if (editReasonBtn) {
+    editReasonBtn.addEventListener("click", () => editLeadCancelReason(lead));
+  }
   card.querySelector("[data-restore-lead]").addEventListener("click", () => restoreLead(lead));
   return card;
 }
 
 async function cancelLead(lead) {
-  if (!confirm(`${lead.customer_name} — ${t("cancelLeadConfirm")}`)) return;
+  const reason = prompt(`${lead.customer_name} — ${t("cancelLeadConfirm")}\n\n${t("cancelReasonPrompt")}`);
+  if (reason === null) return;
+  if (!reason.trim()) {
+    alert(t("cancelReasonRequired"));
+    return;
+  }
 
   const { error } = await client
     .from("leads")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", cancel_reason: reason.trim() })
     .eq("id", lead.id);
 
   if (error) {
@@ -296,12 +310,30 @@ async function restoreLead(lead) {
 
   const { error } = await client
     .from("leads")
-    .update({ status: "pending" })
+    .update({ status: "pending", cancel_reason: null })
     .eq("id", lead.id);
 
   if (error) {
     console.error(error);
     alert(t("restoreFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadCancelledLeads();
+}
+
+async function editLeadCancelReason(lead) {
+  const updated = prompt(t("editCancelReasonPrompt"), lead.cancel_reason || "");
+  if (updated === null) return;
+
+  const { error } = await client
+    .from("leads")
+    .update({ cancel_reason: updated.trim() })
+    .eq("id", lead.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("updateFailed") + " (" + error.message + ")");
     return;
   }
 
@@ -493,6 +525,7 @@ function renderCard(order) {
       <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}</h3>
       <p class="order-card-row__meta">${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")} · ৳${order.grand_total}</p>
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
+      ${order.status === "cancelled" && order.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(order.cancel_reason)}</p>` : ""}
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">${t("copyNumber")}</button>
@@ -520,13 +553,19 @@ function renderCard(order) {
 }
 
 async function quickCancelOrder(order) {
-  if (!confirm(`${order.customer_name} — ${t("cancelOrderConfirm")}`)) return;
+  const reason = prompt(`${order.customer_name} — ${t("cancelOrderConfirm")}\n\n${t("cancelReasonPrompt")}`);
+  if (reason === null) return;
+  if (!reason.trim()) {
+    alert(t("cancelReasonRequired"));
+    return;
+  }
 
   const { error } = await client
     .from("orders")
     .update({
       status: "cancelled",
       previous_status: order.status,
+      cancel_reason: reason.trim(),
       last_updated_by: currentUser.email,
     })
     .eq("id", order.id);
@@ -550,6 +589,7 @@ async function restoreOrder(order) {
     .update({
       status: restoredStatus,
       previous_status: null,
+      cancel_reason: null,
       last_updated_by: currentUser.email,
     })
     .eq("id", order.id);
@@ -561,6 +601,25 @@ async function restoreOrder(order) {
   }
 
   await loadOrders();
+}
+
+async function editCancelReason(order) {
+  const updated = prompt(t("editCancelReasonPrompt"), order.cancel_reason || "");
+  if (updated === null) return;
+
+  const { error } = await client
+    .from("orders")
+    .update({ cancel_reason: updated.trim(), last_updated_by: currentUser.email })
+    .eq("id", order.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("updateFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadOrders();
+  closeModal();
 }
 
 function openModal(order) {
@@ -575,6 +634,20 @@ function openModal(order) {
       ${order.confirmed_by ? `✅ ${t("confirmedBy")}: <b>${escapeHtml(order.confirmed_by)}</b>` : `⏳ ${t("notConfirmedYet")}`}
       ${order.last_updated_by ? ` &nbsp;|&nbsp; 🔄 ${t("lastUpdated")}: <b>${escapeHtml(order.last_updated_by)}</b>` : ""}
     </p>
+
+    ${order.cancel_reason ? `
+      <div class="modal__payment">
+        <h4>❌ ${t("cancelReasonLabel")}</h4>
+        <p>${escapeHtml(order.cancel_reason)}</p>
+        ${currentUserRole === "admin" ? `<button class="btn btn--ghost btn--sm" id="editCancelReasonBtn" type="button">${t("editBtn")}</button>` : ""}
+      </div>
+    ` : ""}
+    ${order.confirm_note ? `
+      <div class="modal__payment">
+        <h4>✅ ${t("confirmNoteLabel")}</h4>
+        <p>${escapeHtml(order.confirm_note)}</p>
+      </div>
+    ` : ""}
 
     <div class="modal__grid">
       <div><span class="modal__label">${t("name")}</span><input type="text" id="editName" class="modal__edit-input" value="${escapeAttr(order.customer_name)}"></div>
@@ -657,6 +730,11 @@ function openModal(order) {
     createShipmentBtn.addEventListener("click", () => createShipment(order));
   }
 
+  const editCancelReasonBtn = document.getElementById("editCancelReasonBtn");
+  if (editCancelReasonBtn) {
+    editCancelReasonBtn.addEventListener("click", () => editCancelReason(order));
+  }
+
   document.getElementById("editQuantity").addEventListener("input", (e) => {
     const qty = parseInt(e.target.value || "1", 10);
     const productTotal = qty * order.unit_price;
@@ -668,6 +746,11 @@ function openModal(order) {
   document.getElementById("updateStatusBtn").addEventListener("click", () => {
     const newStatus = document.getElementById("statusSelect").value;
 
+    let confirmNote = null;
+    if (newStatus === "confirmed" && !order.confirm_note) {
+      confirmNote = prompt(t("confirmNotePrompt")) || "";
+    }
+
     const editedFields = {
       customer_name: document.getElementById("editName").value.trim(),
       district: document.getElementById("editDistrict").value.trim(),
@@ -675,7 +758,7 @@ function openModal(order) {
       quantity: parseInt(document.getElementById("editQuantity").value || "1", 10),
     };
     const advanceType = document.getElementById("advanceTypeSelect").value;
-    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType);
+    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote);
   });
 
   modal.hidden = false;
@@ -686,7 +769,7 @@ function closeModal() {
   currentModalOrder = null;
 }
 
-async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType) {
+async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType, confirmNote) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = t("updating");
@@ -714,6 +797,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     advance_type: advanceType,
   };
   if (!existing?.confirmed_by) updatePayload.confirmed_by = currentUser.email;
+  if (confirmNote && confirmNote.trim()) updatePayload.confirm_note = confirmNote.trim();
 
   const { error } = await client
     .from("orders")
