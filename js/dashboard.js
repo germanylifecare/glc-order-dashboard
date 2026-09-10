@@ -857,11 +857,13 @@ function openModal(order) {
       ${order.consignment_id ? `
         <p>✅ Shipment তৈরি হয়ে গেছে — Tracking Code: <b>${escapeHtml(order.tracking_code || "")}</b></p>
         <p class="muted">Consignment ID: ${escapeHtml(order.consignment_id)}</p>
-      ` : order.status === "packed" ? `
+      ` : order.status === "packed" && currentUserRole === "admin" ? `
         <button class="btn btn--primary btn--block" id="createShipmentBtn" type="button">Create Shipment (Steadfast)</button>
         <p id="shipmentStatusMsg" class="form-status"></p>
+      ` : order.status === "packed" ? `
+        <p class="muted">Packaging team shipment তৈরি করে দেবে।</p>
       ` : `
-        <p class="muted">Order "Packed" status-এ গেলে shipment তৈরি করার বাটন এখানে আসবে।</p>
+        <p class="muted">Order "Packed" status-এ গেলে shipment তৈরি হবে।</p>
       `}
     </div>
   `;

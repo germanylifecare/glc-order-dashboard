@@ -71,7 +71,7 @@ async function boot() {
   });
 
   document.getElementById("markPackedBtn").addEventListener("click", markSelectedAsPacked);
-  document.getElementById("exportBtn").addEventListener("click", exportAndPrint);
+  document.getElementById("shipAndPrintBtn").addEventListener("click", readyToShipAndPrint);
 
   await loadOrders();
 }
@@ -165,7 +165,12 @@ function updateBulkBar() {
     return order && order.status === "confirmed";
   });
   document.getElementById("markPackedBtn").disabled = !eligible;
-  document.getElementById("exportBtn").disabled = count === 0;
+
+  const shipEligible = [...selectedIds].some((id) => {
+    const order = allOrders.find((o) => o.id === id);
+    return order && order.status === "packed" && !order.consignment_id;
+  });
+  document.getElementById("shipAndPrintBtn").disabled = !shipEligible;
 }
 
 async function markSelectedAsPacked() {
@@ -201,28 +206,121 @@ async function markSelectedAsPacked() {
   await loadOrders();
 }
 
-function exportAndPrint() {
-  const orders = [...selectedIds]
-    .map((id) => allOrders.find((o) => o.id === id))
-    .filter(Boolean);
+async function readyToShipAndPrint() {
+  const idsToShip = [...selectedIds].filter((id) => {
+    const order = allOrders.find((o) => o.id === id);
+    return order && order.status === "packed" && !order.consignment_id;
+  });
 
-  if (orders.length === 0) return;
+  if (idsToShip.length === 0) return;
 
-  const slipsHtml = orders
-    .map(
-      (o) => `
-        <div class="slip">
-          <div class="slip__brand">GLC <span>Germany Life Care</span></div>
-          <div class="slip__row"><span>Order</span><b>#${o.id}</b></div>
-          <div class="slip__row"><span>Name</span><b>${escapeHtml(o.customer_name)}</b></div>
-          <div class="slip__row"><span>Phone</span><b>${escapeHtml(o.phone)}</b></div>
-          <div class="slip__row"><span>District</span><b>${escapeHtml(o.district)}</b></div>
-          <div class="slip__address"><span>Address</span><p>${escapeHtml(o.address)}</p></div>
-          <div class="slip__row"><span>Quantity</span><b>${o.quantity} pcs</b></div>
-          <div class="slip__row slip__cod"><span>COD Amount</span><b>৳${o.grand_total}</b></div>
+  const btn = document.getElementById("shipAndPrintBtn");
+  btn.disabled = true;
+  btn.textContent = "প্রসেস হচ্ছে...";
+
+  const shippedOrders = [];
+
+  for (const id of idsToShip) {
+    const order = allOrders.find((o) => o.id === id);
+    const advanceType = order.advance_type || "none";
+    let codAmount;
+    if (advanceType === "full") codAmount = 0;
+    else if (advanceType === "delivery_only") codAmount = order.product_total;
+    else codAmount = order.grand_total;
+
+    try {
+      const res = await fetch("/api/steadfast-create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoice: String(order.id),
+          recipient_name: order.customer_name,
+          recipient_phone: order.phone,
+          recipient_address: `${order.address}, ${order.district}`,
+          cod_amount: codAmount,
+          note: `Qty: ${order.quantity}`,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.status !== 200 || !data.consignment) {
+        throw new Error(data.message || "Steadfast error");
+      }
+
+      const { consignment_id, tracking_code, status } = data.consignment;
+
+      await client
+        .from("orders")
+        .update({
+          consignment_id: String(consignment_id),
+          tracking_code,
+          steadfast_status: status || "in_review",
+          status: "ready_to_ship",
+          shipped_at: new Date().toISOString(),
+          last_updated_by: currentUser.email,
+        })
+        .eq("id", order.id);
+
+      shippedOrders.push({ ...order, consignment_id: String(consignment_id) });
+    } catch (err) {
+      console.error(`Shipment creation failed for order #${order.id}:`, err);
+      alert(`Order #${order.id}: Shipment তৈরি ব্যর্থ হয়েছে — ${err.message || "Unknown error"}`);
+    }
+  }
+
+  btn.textContent = "🚚 Ready to Ship + প্রিন্ট লেবেল";
+
+  if (shippedOrders.length > 0) {
+    printLabels(shippedOrders);
+  }
+
+  await loadOrders();
+}
+
+function printLabels(orders) {
+  const labelsHtml = orders
+    .map((o) => {
+      const created = new Date(o.created_at);
+      const pad = (n) => String(n).padStart(2, "0");
+      const orderDate = `${created.getFullYear()}-${pad(created.getMonth() + 1)}-${pad(created.getDate())} ${pad(created.getHours())}:${pad(created.getMinutes())}:${pad(created.getSeconds())}`;
+      const yy = String(created.getFullYear()).slice(-2);
+      const invoiceNo = `${yy}${pad(created.getMonth() + 1)}${pad(created.getDate())}${String(o.id).padStart(4, "0")}`;
+
+      return `
+        <div class="label">
+          <div class="label__brand">${escapeHtml(CONFIG.COMPANY_NAME)}</div>
+          <div class="label__block">
+            <p><b>${escapeHtml(o.customer_name)}</b></p>
+            <p>Address: ${escapeHtml(o.address)}, ${escapeHtml(o.district)}</p>
+            <p>Phone: ${escapeHtml(o.phone)}</p>
+            <p>Order Date: ${orderDate}</p>
+          </div>
+          <div class="label__block">
+            <p><b>${escapeHtml(CONFIG.COMPANY_NAME)}</b></p>
+            <p>Address: ${escapeHtml(CONFIG.COMPANY_ADDRESS)}</p>
+            <p>Phone: ${escapeHtml(CONFIG.COMPANY_PHONE)}</p>
+            <p>Invoice No: ${invoiceNo}</p>
+          </div>
+          <div class="label__parcel">Parcel ID: <b>${escapeHtml(o.consignment_id || "—")}</b></div>
+          <table class="label__table">
+            <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>${escapeHtml(CONFIG.PRODUCT_NAME)}</td>
+                <td>${o.quantity}</td>
+                <td>${CONFIG.MRP_PRICE}</td>
+                <td>${o.product_total}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="label__totals">
+            <p>Subtotal: ${o.product_total} Tk</p>
+            <p>Delivery: ${o.delivery_charge} Tk</p>
+            <p class="label__grand">Total: ${o.grand_total} Tk</p>
+          </div>
         </div>
-      `
-    )
+      `;
+    })
     .join("");
 
   const printWindow = window.open("", "_blank");
@@ -231,26 +329,29 @@ function exportAndPrint() {
     <html lang="bn">
     <head>
       <meta charset="UTF-8" />
-      <title>Packing Slips — GLC</title>
+      <title>Shipping Labels — GLC</title>
       <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 16px; color: #1c1c1e; }
-        .slips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .slip { border: 1.5px dashed #999; border-radius: 8px; padding: 14px 16px; page-break-inside: avoid; break-inside: avoid; }
-        .slip__brand { font-weight: 800; font-size: 16px; color: #C81E2C; margin-bottom: 10px; }
-        .slip__brand span { font-weight: 600; font-size: 11px; color: #6B6F72; margin-left: 6px; }
-        .slip__row { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 6px; border-bottom: 1px dotted #ddd; padding-bottom: 4px; }
-        .slip__row span { color: #6B6F72; }
-        .slip__address { font-size: 13.5px; margin-bottom: 6px; }
-        .slip__address span { color: #6B6F72; display: block; margin-bottom: 2px; }
-        .slip__address p { margin: 0; font-weight: 600; }
-        .slip__cod { border-bottom: none; margin-top: 4px; padding-top: 6px; border-top: 1.5px solid #1c1c1e; }
-        .slip__cod b { font-size: 16px; color: #C81E2C; }
-        @media print { @page { margin: 10mm; } }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; color: #1c1c1e; }
+        .label { width: 3in; height: 4in; padding: 8px 10px; page-break-after: always; break-after: page; overflow: hidden; }
+        .label:last-child { page-break-after: auto; break-after: auto; }
+        .label__brand { font-weight: 800; font-size: 13px; text-align: center; border-bottom: 1.5px solid #1c1c1e; padding-bottom: 4px; margin-bottom: 6px; }
+        .label__block { font-size: 9.5px; line-height: 1.4; border-bottom: 1px dashed #999; padding-bottom: 5px; margin-bottom: 5px; }
+        .label__block p { margin: 0 0 1px; }
+        .label__parcel { font-size: 10px; font-weight: 700; text-align: center; border: 1.5px solid #1c1c1e; border-radius: 4px; padding: 3px; margin-bottom: 6px; }
+        .label__table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 6px; }
+        .label__table th, .label__table td { border-bottom: 1px solid #ccc; padding: 2px 3px; text-align: left; }
+        .label__table th:nth-child(2), .label__table td:nth-child(2),
+        .label__table th:nth-child(3), .label__table td:nth-child(3),
+        .label__table th:nth-child(4), .label__table td:nth-child(4) { text-align: right; }
+        .label__totals { font-size: 9.5px; text-align: right; }
+        .label__totals p { margin: 1px 0; }
+        .label__grand { font-weight: 800; font-size: 11px; border-top: 1.5px solid #1c1c1e; padding-top: 3px; margin-top: 3px !important; }
+        @media print { @page { size: 3in 4in; margin: 0; } }
       </style>
     </head>
     <body>
-      <div class="slips-grid">${slipsHtml}</div>
+      ${labelsHtml}
       <script>
         window.onload = function () { window.print(); };
       </script>
