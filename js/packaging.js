@@ -71,6 +71,7 @@ async function boot() {
   });
 
   document.getElementById("markPackedBtn").addEventListener("click", markSelectedAsPacked);
+  document.getElementById("exportBtn").addEventListener("click", exportAndPrint);
 
   await loadOrders();
 }
@@ -164,6 +165,7 @@ function updateBulkBar() {
     return order && order.status === "confirmed";
   });
   document.getElementById("markPackedBtn").disabled = !eligible;
+  document.getElementById("exportBtn").disabled = count === 0;
 }
 
 async function markSelectedAsPacked() {
@@ -197,6 +199,65 @@ async function markSelectedAsPacked() {
   }
 
   await loadOrders();
+}
+
+function exportAndPrint() {
+  const orders = [...selectedIds]
+    .map((id) => allOrders.find((o) => o.id === id))
+    .filter(Boolean);
+
+  if (orders.length === 0) return;
+
+  const slipsHtml = orders
+    .map(
+      (o) => `
+        <div class="slip">
+          <div class="slip__brand">GLC <span>Germany Life Care</span></div>
+          <div class="slip__row"><span>Order</span><b>#${o.id}</b></div>
+          <div class="slip__row"><span>Name</span><b>${escapeHtml(o.customer_name)}</b></div>
+          <div class="slip__row"><span>Phone</span><b>${escapeHtml(o.phone)}</b></div>
+          <div class="slip__row"><span>District</span><b>${escapeHtml(o.district)}</b></div>
+          <div class="slip__address"><span>Address</span><p>${escapeHtml(o.address)}</p></div>
+          <div class="slip__row"><span>Quantity</span><b>${o.quantity} pcs</b></div>
+          <div class="slip__row slip__cod"><span>COD Amount</span><b>৳${o.grand_total}</b></div>
+        </div>
+      `
+    )
+    .join("");
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="bn">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Packing Slips — GLC</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 16px; color: #1c1c1e; }
+        .slips-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .slip { border: 1.5px dashed #999; border-radius: 8px; padding: 14px 16px; page-break-inside: avoid; break-inside: avoid; }
+        .slip__brand { font-weight: 800; font-size: 16px; color: #C81E2C; margin-bottom: 10px; }
+        .slip__brand span { font-weight: 600; font-size: 11px; color: #6B6F72; margin-left: 6px; }
+        .slip__row { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 6px; border-bottom: 1px dotted #ddd; padding-bottom: 4px; }
+        .slip__row span { color: #6B6F72; }
+        .slip__address { font-size: 13.5px; margin-bottom: 6px; }
+        .slip__address span { color: #6B6F72; display: block; margin-bottom: 2px; }
+        .slip__address p { margin: 0; font-weight: 600; }
+        .slip__cod { border-bottom: none; margin-top: 4px; padding-top: 6px; border-top: 1.5px solid #1c1c1e; }
+        .slip__cod b { font-size: 16px; color: #C81E2C; }
+        @media print { @page { margin: 10mm; } }
+      </style>
+    </head>
+    <body>
+      <div class="slips-grid">${slipsHtml}</div>
+      <script>
+        window.onload = function () { window.print(); };
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
 }
 
 function escapeHtml(str) {
