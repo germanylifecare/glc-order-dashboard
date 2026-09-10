@@ -24,6 +24,7 @@ let currentUserRole = null;
 let allOrders = [];
 let allLeads = [];
 let allCancelledLeads = [];
+let allFollowupLeads = [];
 let activeFilter = "all";
 let searchTerm = "";
 let currentModalOrder = null;
@@ -60,11 +61,15 @@ async function boot() {
 
   document.getElementById("refreshBtn").addEventListener("click", () => {
     if (activeFilter === "leads") loadLeads();
+    else if (activeFilter === "lead_followup") loadFollowupLeads();
+    else if (activeFilter === "cancelled_leads") loadCancelledLeads();
     else loadOrders();
   });
   document.getElementById("searchBox").addEventListener("input", (e) => {
     searchTerm = e.target.value.trim().toLowerCase();
     if (activeFilter === "leads") renderLeadsList();
+    else if (activeFilter === "lead_followup") renderFollowupLeadsList();
+    else if (activeFilter === "cancelled_leads") renderCancelledLeadsList();
     else render();
   });
 
@@ -75,6 +80,8 @@ async function boot() {
       activeFilter = btn.dataset.status;
       if (activeFilter === "leads") {
         loadLeads();
+      } else if (activeFilter === "lead_followup") {
+        loadFollowupLeads();
       } else if (activeFilter === "cancelled_leads") {
         loadCancelledLeads();
       } else {
@@ -171,6 +178,26 @@ async function loadCancelledLeads() {
   renderCancelledLeadsList();
 }
 
+async function loadFollowupLeads() {
+  document.getElementById("loadingMsg").hidden = false;
+  const { data, error } = await client
+    .from("leads")
+    .select("*")
+    .eq("status", "followup")
+    .order("created_at", { ascending: true });
+
+  document.getElementById("loadingMsg").hidden = true;
+
+  if (error) {
+    console.error(error);
+    alert(t("loadError"));
+    return;
+  }
+
+  allFollowupLeads = data || [];
+  renderFollowupLeadsList();
+}
+
 function renderLeadsList() {
   let list = allLeads;
   if (searchTerm) {
@@ -209,6 +236,7 @@ function renderLeadCard(lead) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-followup-lead="${lead.id}">${t("followupBtn")}</button>
       <button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-lead="${lead.id}">${t("cancelBtn")}</button>
       <button class="btn btn--primary btn--sm" data-convert="${lead.id}">${t("convertBtn")}</button>
     </div>
@@ -220,6 +248,7 @@ function renderLeadCard(lead) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  card.querySelector("[data-followup-lead]").addEventListener("click", () => markLeadFollowup(lead));
   card.querySelector("[data-cancel-lead]").addEventListener("click", () => cancelLead(lead));
   card.querySelector("[data-convert]").addEventListener("click", () => openLeadModal(lead));
   return card;
@@ -283,6 +312,62 @@ function renderCancelledLeadCard(lead) {
   return card;
 }
 
+function renderFollowupLeadsList() {
+  let list = allFollowupLeads;
+  if (searchTerm) {
+    list = list.filter(l =>
+      (l.customer_name || "").toLowerCase().includes(searchTerm) ||
+      (l.phone || "").includes(searchTerm)
+    );
+  }
+
+  const wrap = document.getElementById("ordersList");
+  const emptyMsg = document.getElementById("emptyMsg");
+  wrap.innerHTML = "";
+
+  if (list.length === 0) {
+    emptyMsg.textContent = t("noFollowupLeads");
+    emptyMsg.hidden = false;
+    return;
+  }
+  emptyMsg.hidden = true;
+
+  list.forEach(lead => wrap.appendChild(renderFollowupLeadCard(lead)));
+}
+
+function renderFollowupLeadCard(lead) {
+  const card = document.createElement("div");
+  card.className = "order-card-row";
+  card.innerHTML = `
+    <div class="order-card-row__main">
+      <div class="order-card-row__top">
+        <span class="status-badge status-badge--followup">${t("leadFollowupTab")}</span>
+        <span class="order-card-row__time">${formatDate(lead.created_at)}</span>
+      </div>
+      <h3 class="order-card-row__name">${escapeHtml(lead.customer_name)}</h3>
+      <p class="order-card-row__meta">${escapeHtml(lead.phone)}${lead.district ? " · " + escapeHtml(lead.district) : ""}</p>
+      <p class="order-card-row__address">${escapeHtml(lead.address || "")}</p>
+    </div>
+    <div class="order-card-row__actions">
+      <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-back-pending="${lead.id}">${t("backToPendingBtn")}</button>
+      <button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-lead="${lead.id}">${t("cancelBtn")}</button>
+      <button class="btn btn--primary btn--sm" data-convert="${lead.id}">${t("convertBtn")}</button>
+    </div>
+  `;
+  card.querySelector("[data-copy-phone]").addEventListener("click", (e) => {
+    navigator.clipboard.writeText(lead.phone);
+    const btn = e.currentTarget;
+    const original = btn.textContent;
+    btn.textContent = t("copied");
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+  card.querySelector("[data-back-pending]").addEventListener("click", () => moveLeadToPending(lead));
+  card.querySelector("[data-cancel-lead]").addEventListener("click", () => cancelLead(lead));
+  card.querySelector("[data-convert]").addEventListener("click", () => openLeadModal(lead));
+  return card;
+}
+
 async function cancelLead(lead) {
   const reason = await askReason({
     title: t("cancelReasonModalTitle"),
@@ -303,7 +388,40 @@ async function cancelLead(lead) {
     return;
   }
 
+  if (activeFilter === "lead_followup") await loadFollowupLeads();
+  else await loadLeads();
+}
+
+async function markLeadFollowup(lead) {
+  if (!confirm(`${lead.customer_name} — ${t("markFollowupConfirm")}`)) return;
+
+  const { error } = await client
+    .from("leads")
+    .update({ status: "followup" })
+    .eq("id", lead.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("updateFailed") + " (" + error.message + ")");
+    return;
+  }
+
   await loadLeads();
+}
+
+async function moveLeadToPending(lead) {
+  const { error } = await client
+    .from("leads")
+    .update({ status: "pending" })
+    .eq("id", lead.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("updateFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadFollowupLeads();
 }
 
 async function restoreLead(lead) {
@@ -485,7 +603,8 @@ async function convertLead() {
 
   msgEl.textContent = t("updateSuccess");
   msgEl.className = "form-status success";
-  await loadLeads();
+  if (activeFilter === "lead_followup") await loadFollowupLeads();
+  else await loadLeads();
   await loadOrders();
   setTimeout(closeLeadModal, 700);
 }
@@ -927,6 +1046,7 @@ async function createShipment(order) {
 
 function onLangChange() {
   if (activeFilter === "leads") renderLeadsList();
+  else if (activeFilter === "lead_followup") renderFollowupLeadsList();
   else if (activeFilter === "cancelled_leads") renderCancelledLeadsList();
   else render();
   if (currentModalOrder) openModal(currentModalOrder);
