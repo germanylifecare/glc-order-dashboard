@@ -260,6 +260,7 @@ function renderCancelledLeadCard(lead) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm btn--restore-ghost" data-restore-lead="${lead.id}">${t("restoreBtn")}</button>
     </div>
   `;
   card.querySelector("[data-copy-phone]").addEventListener("click", (e) => {
@@ -269,6 +270,7 @@ function renderCancelledLeadCard(lead) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  card.querySelector("[data-restore-lead]").addEventListener("click", () => restoreLead(lead));
   return card;
 }
 
@@ -287,6 +289,23 @@ async function cancelLead(lead) {
   }
 
   await loadLeads();
+}
+
+async function restoreLead(lead) {
+  if (!confirm(`${lead.customer_name} — ${t("restoreLeadConfirm")}`)) return;
+
+  const { error } = await client
+    .from("leads")
+    .update({ status: "pending" })
+    .eq("id", lead.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("restoreFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadCancelledLeads();
 }
 
 function openLeadModal(lead) {
@@ -477,7 +496,11 @@ function renderCard(order) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">${t("copyNumber")}</button>
-      <button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-order="${order.id}">${t("cancelBtn")}</button>
+      ${
+        order.status === "cancelled"
+          ? `<button type="button" class="btn btn--ghost btn--sm btn--restore-ghost" data-restore-order="${order.id}">${t("restoreBtn")}</button>`
+          : `<button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-order="${order.id}">${t("cancelBtn")}</button>`
+      }
       <button class="btn btn--primary btn--sm" data-open="${order.id}">${t("detailsBtn")}</button>
     </div>
   `;
@@ -488,7 +511,10 @@ function renderCard(order) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
-  card.querySelector("[data-cancel-order]").addEventListener("click", () => quickCancelOrder(order));
+  const cancelOrderBtn = card.querySelector("[data-cancel-order]");
+  if (cancelOrderBtn) cancelOrderBtn.addEventListener("click", () => quickCancelOrder(order));
+  const restoreOrderBtn = card.querySelector("[data-restore-order]");
+  if (restoreOrderBtn) restoreOrderBtn.addEventListener("click", () => restoreOrder(order));
   card.querySelector("[data-open]").addEventListener("click", () => openModal(order));
   return card;
 }
@@ -498,12 +524,39 @@ async function quickCancelOrder(order) {
 
   const { error } = await client
     .from("orders")
-    .update({ status: "cancelled", last_updated_by: currentUser.email })
+    .update({
+      status: "cancelled",
+      previous_status: order.status,
+      last_updated_by: currentUser.email,
+    })
     .eq("id", order.id);
 
   if (error) {
     console.error(error);
     alert(t("cancelFailed") + " (" + error.message + ")");
+    return;
+  }
+
+  await loadOrders();
+}
+
+async function restoreOrder(order) {
+  if (!confirm(`${order.customer_name} — ${t("restoreOrderConfirm")}`)) return;
+
+  const restoredStatus = order.previous_status || "pending_confirmation";
+
+  const { error } = await client
+    .from("orders")
+    .update({
+      status: restoredStatus,
+      previous_status: null,
+      last_updated_by: currentUser.email,
+    })
+    .eq("id", order.id);
+
+  if (error) {
+    console.error(error);
+    alert(t("restoreFailed") + " (" + error.message + ")");
     return;
   }
 
