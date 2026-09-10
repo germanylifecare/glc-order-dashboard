@@ -526,6 +526,10 @@ function render() {
 function renderCard(order) {
   const card = document.createElement("div");
   card.className = "order-card-row";
+  const paymentLabels = { bkash: "bKash", nagad: "Nagad", cod: "COD" };
+  const paymentDisplay = order.payment_method ? (paymentLabels[order.payment_method] || order.payment_method) : "";
+  const advanceDisplay = order.advance_type === "full" ? "Full Advance" : order.advance_type === "delivery_only" ? "Delivery Advance" : "";
+  const notesPreview = order.notes ? (order.notes.length > 40 ? order.notes.slice(0, 40) + "…" : order.notes) : "";
   card.innerHTML = `
     <div class="order-card-row__main">
       <div class="order-card-row__top">
@@ -535,6 +539,13 @@ function renderCard(order) {
       <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}</h3>
       <p class="order-card-row__meta">${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")} · ৳${order.grand_total}</p>
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
+      <div class="order-card-row__details">
+        ${paymentDisplay ? `<span class="order-card-row__detail-chip">💳 <b>${escapeHtml(paymentDisplay)}</b></span>` : ""}
+        ${advanceDisplay ? `<span class="order-card-row__detail-chip">💰 <b>${advanceDisplay}</b></span>` : ""}
+        ${order.age ? `<span class="order-card-row__detail-chip">🎂 <b>${order.age}</b></span>` : ""}
+        ${order.handled_by ? `<span class="order-card-row__detail-chip">👤 <b>${escapeHtml(order.handled_by)}</b></span>` : ""}
+        ${notesPreview ? `<span class="order-card-row__detail-chip">📝 ${escapeHtml(notesPreview)}</span>` : ""}
+      </div>
       ${order.status === "cancelled" && order.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(order.cancel_reason)}</p>` : ""}
     </div>
     <div class="order-card-row__actions">
