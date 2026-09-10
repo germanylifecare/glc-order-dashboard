@@ -37,7 +37,17 @@ async function boot() {
   }
   currentUser = session.user;
   document.getElementById("userEmail").textContent = currentUser.email;
-  loadSteadfastBalance();
+
+  const { data: profile } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", currentUser.id)
+    .single();
+
+  if (profile && profile.role === "admin") {
+    document.getElementById("steadfastBalance").hidden = false;
+    loadSteadfastBalance();
+  }
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await client.auth.signOut();
