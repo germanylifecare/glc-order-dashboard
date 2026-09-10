@@ -215,15 +215,22 @@ function openLeadModal(lead) {
       <select id="leadPaymentMethod">
         <option value="bkash">bKash</option>
         <option value="nagad">Nagad</option>
+        <option value="cod">COD (ক্যাশ অন ডেলিভারি)</option>
       </select>
     </div>
-    <div class="modal__notes">
-      <label for="leadSenderNumber">${t("senderNumber")}</label>
-      <input type="text" id="leadSenderNumber" placeholder="01XXXXXXXXX">
+    <div id="leadAdvanceFields">
+      <div class="modal__notes">
+        <label for="leadSenderNumber">${t("senderNumber")} <span class="optional-tag">${t("optionalTag")}</span></label>
+        <input type="text" id="leadSenderNumber" placeholder="01XXXXXXXXX">
+      </div>
+      <div class="modal__notes">
+        <label for="leadTrxId">Transaction ID <span class="optional-tag">${t("optionalTag")}</span></label>
+        <input type="text" id="leadTrxId" placeholder="TrxID">
+      </div>
     </div>
     <div class="modal__notes">
-      <label for="leadTrxId">Transaction ID</label>
-      <input type="text" id="leadTrxId" placeholder="TrxID">
+      <label for="leadHandledBy">${t("handledByLabel")}</label>
+      <input type="text" id="leadHandledBy" placeholder="${t("handledByPlaceholder")}">
     </div>
 
     <button class="btn btn--primary btn--block" id="convertLeadBtn">${t("convertBtn")}</button>
@@ -235,6 +242,10 @@ function openLeadModal(lead) {
     const pt = CONFIG.UNIT_PRICE * q;
     document.getElementById("leadProductTotal").textContent = pt;
     document.getElementById("leadGrandTotal").textContent = pt + CONFIG.DELIVERY_CHARGE;
+  });
+
+  document.getElementById("leadPaymentMethod").addEventListener("change", (e) => {
+    document.getElementById("leadAdvanceFields").style.display = e.target.value === "cod" ? "none" : "";
   });
 
   document.getElementById("convertLeadBtn").addEventListener("click", convertLead);
@@ -258,8 +269,9 @@ async function convertLead() {
   const paymentMethod = document.getElementById("leadPaymentMethod").value;
   const senderNumber = document.getElementById("leadSenderNumber").value.trim();
   const trxId = document.getElementById("leadTrxId").value.trim();
+  const handledBy = document.getElementById("leadHandledBy").value.trim();
 
-  if (!name || !district || !address || !senderNumber || !trxId) {
+  if (!name || !district || !address || !handledBy) {
     msgEl.textContent = t("fillAllFields");
     msgEl.className = "form-status error";
     return;

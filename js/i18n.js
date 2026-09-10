@@ -50,6 +50,9 @@ const I18N = {
     paymentMethodLabel: "পেমেন্ট মাধ্যম",
     fillAllFields: "সব ঘর পূরণ করুন।",
     notProvided: "এখনো দেওয়া হয়নি — কল করে জিজ্ঞেস করুন",
+    optionalTag: "(ঐচ্ছিক)",
+    handledByLabel: "কে অর্ডার হ্যান্ডেল করেছেন",
+    handledByPlaceholder: "নাম লিখুন",
   },
   en: {
     logout: "Logout",
@@ -98,6 +101,9 @@ const I18N = {
     paymentMethodLabel: "Payment Method",
     fillAllFields: "Please fill all fields.",
     notProvided: "Not provided yet — ask on the call",
+    optionalTag: "(Optional)",
+    handledByLabel: "Handled By",
+    handledByPlaceholder: "Enter name",
   },
 };
 
