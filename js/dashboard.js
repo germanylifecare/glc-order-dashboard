@@ -867,7 +867,7 @@ function openModal(order) {
 
     <div class="modal__grid">
       <div><span class="modal__label">${t("name")}</span><input type="text" id="editName" class="modal__edit-input" value="${escapeAttr(order.customer_name)}"></div>
-      <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(order.phone)}</span><button type="button" class="copy-btn" id="copyPhoneBtn">${t("copy")}</button></p></div>
+      <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(order.phone)}</span><button type="button" class="copy-btn" id="copyPhoneBtn">${t("copy")}</button><button type="button" class="copy-btn" id="fraudCheckBtn">🔍 Fraud Check</button></p><p id="fraudCheckResult" class="form-status" style="font-size:12.5px;"></p></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="editDistrict" class="modal__edit-input" value="${escapeAttr(order.district)}"></div>
       <div><span class="modal__label">${t("quantity")}</span><input type="number" id="editQuantity" class="modal__edit-input" min="1" value="${order.quantity}"></div>
       <div><span class="modal__label">${t("age")}</span><input type="number" id="editAge" class="modal__edit-input" min="1" value="${order.age || ""}"></div>
@@ -945,6 +945,11 @@ function openModal(order) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = t("copy"); }, 1500);
   });
+
+  const fraudCheckBtn = document.getElementById("fraudCheckBtn");
+  if (fraudCheckBtn) {
+    fraudCheckBtn.addEventListener("click", () => runFraudCheck(order));
+  }
 
 
   document.getElementById("statusSelect").value = order.status;
@@ -1055,6 +1060,41 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
   msgEl.className = "form-status success";
   await loadOrders();
   setTimeout(closeModal, 700);
+}
+
+async function runFraudCheck(order) {
+  const resultEl = document.getElementById("fraudCheckResult");
+  const btn = document.getElementById("fraudCheckBtn");
+  if (!resultEl || !btn) return;
+
+  btn.disabled = true;
+  btn.textContent = "🔍 চেক হচ্ছে...";
+  resultEl.textContent = "";
+  resultEl.className = "form-status";
+
+  try {
+    const res = await fetch("/api/bdcourier-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: order.phone }),
+    });
+    const data = await res.json();
+
+    if (data.status !== "success" || !data.data) {
+      throw new Error(data.message || "Fraud check ব্যর্থ হয়েছে");
+    }
+
+    const summary = data.data.summary;
+    resultEl.textContent = `মোট অর্ডার: ${summary.total_parcel} · রিসিভ করেছে: ${summary.success_parcel} · বাতিল/রিসিভ করেনি: ${summary.cancelled_parcel}`;
+    resultEl.className = "form-status";
+  } catch (err) {
+    console.error("Fraud check failed:", err);
+    resultEl.textContent = "চেক করা যায়নি: " + (err.message || "Unknown error");
+    resultEl.className = "form-status";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔍 Fraud Check";
+  }
 }
 
 async function createShipment(order) {
