@@ -854,7 +854,11 @@ async function convertLead() {
 
   if (error) {
     console.error(error);
-    msgEl.textContent = t("updateFailed");
+    if (error.message && error.message.includes("DUPLICATE_ORDER_TODAY")) {
+      msgEl.textContent = "⚠️ এই নাম্বারে আজকে ইতিমধ্যে একটা অর্ডার আছে (duplicate-order guard block করেছে)।";
+    } else {
+      msgEl.textContent = t("updateFailed");
+    }
     msgEl.className = "form-status error";
     return;
   }
