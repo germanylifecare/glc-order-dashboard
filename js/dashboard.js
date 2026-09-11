@@ -32,6 +32,56 @@ let currentModalLead = null;
 
 document.addEventListener("DOMContentLoaded", boot);
 
+const STEADFAST_TERMINAL_STATUSES = ["delivered", "returned", "cancelled"];
+
+function mapSteadfastStatus(deliveryStatus) {
+  switch (deliveryStatus) {
+    case "delivered":
+    case "delivered_approval_pending":
+    case "partial_delivered":
+    case "partial_delivered_approval_pending":
+      return "delivered";
+    case "cancelled":
+    case "cancelled_approval_pending":
+      return "returned";
+    case "hold":
+      return "hold_by_courier";
+    default:
+      return null;
+  }
+}
+
+async function syncSteadfastStatuses() {
+  const candidates = allOrders.filter(
+    (o) => o.consignment_id && !STEADFAST_TERMINAL_STATUSES.includes(o.status)
+  );
+  if (candidates.length === 0) return;
+
+  for (const order of candidates) {
+    try {
+      const res = await fetch(`/api/steadfast-status?consignment_id=${encodeURIComponent(order.consignment_id)}`);
+      const data = await res.json();
+      if (data.status !== 200 || !data.delivery_status) continue;
+
+      const newStatus = mapSteadfastStatus(data.delivery_status);
+      const updatePayload = {
+        steadfast_status: data.delivery_status,
+        steadfast_synced_at: new Date().toISOString(),
+      };
+      if (newStatus && newStatus !== order.status) {
+        updatePayload.status = newStatus;
+      }
+
+      await client.from("orders").update(updatePayload).eq("id", order.id);
+    } catch (err) {
+      console.error("Steadfast sync failed for order", order.id, err);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  await loadOrders();
+}
+
 async function boot() {
   const { data: { session } } = await client.auth.getSession();
   if (!session) {
@@ -95,7 +145,17 @@ async function boot() {
   document.getElementById("leadModalBackdrop").addEventListener("click", closeLeadModal);
   document.getElementById("leadModalClose").addEventListener("click", closeLeadModal);
 
+  document.getElementById("syncSteadfastBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("syncSteadfastBtn");
+    btn.disabled = true;
+    btn.textContent = "🔄 সিঙ্ক হচ্ছে...";
+    await syncSteadfastStatuses();
+    btn.disabled = false;
+    btn.textContent = "🚚 Steadfast সিঙ্ক";
+  });
+
   await loadOrders();
+  syncSteadfastStatuses();
 }
 
 async function loadSteadfastBalance() {
@@ -865,6 +925,7 @@ function openModal(order) {
       ${order.consignment_id ? `
         <p>✅ Shipment তৈরি হয়ে গেছে — Tracking Code: <b>${escapeHtml(order.tracking_code || "")}</b></p>
         <p class="muted">Consignment ID: ${escapeHtml(order.consignment_id)}</p>
+        <p class="muted">Steadfast Status: <b>${escapeHtml(order.steadfast_status || "—")}</b>${order.steadfast_synced_at ? ` (last checked: ${new Date(order.steadfast_synced_at).toLocaleString("bn-BD")})` : ""}</p>
       ` : order.status === "packed" && currentUserRole === "admin" ? `
         <button class="btn btn--primary btn--block" id="createShipmentBtn" type="button">Create Shipment (Steadfast)</button>
         <p id="shipmentStatusMsg" class="form-status"></p>
