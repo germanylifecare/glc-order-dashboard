@@ -347,6 +347,7 @@ function renderFollowupLeadCard(lead) {
       <h3 class="order-card-row__name">${escapeHtml(lead.customer_name)}</h3>
       <p class="order-card-row__meta">${escapeHtml(lead.phone)}${lead.district ? " · " + escapeHtml(lead.district) : ""}</p>
       <p class="order-card-row__address">${escapeHtml(lead.address || "")}</p>
+      ${lead.followup_reason ? `<p class="order-card-row__address" style="color:var(--success);"><b>নোট:</b> ${escapeHtml(lead.followup_reason)}</p>` : ""}
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(lead.phone)}">${t("copyNumber")}</button>
@@ -393,11 +394,18 @@ async function cancelLead(lead) {
 }
 
 async function markLeadFollowup(lead) {
-  if (!confirm(`${lead.customer_name} — ${t("markFollowupConfirm")}`)) return;
+  const reason = await askReason({
+    title: "ফলোআপ নোট",
+    subtitle: `${lead.customer_name} — কেন ফলোআপে নিচ্ছেন?`,
+    placeholder: "যেমন: কল ধরেনি, কাল আবার কল করতে বলেছে, ভাবছে এখনো",
+    confirmLabel: "ফলোআপে নিন",
+    required: false,
+  });
+  if (reason === null) return;
 
   const { error } = await client
     .from("leads")
-    .update({ status: "followup" })
+    .update({ status: "followup", followup_reason: reason || null })
     .eq("id", lead.id);
 
   if (error) {
