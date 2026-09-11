@@ -20,3 +20,9 @@ function bundlePrice(qty) {
   const match = CONFIG.BUNDLES.find((b) => b.qty === qty);
   return match ? match.price : CONFIG.UNIT_PRICE * qty;
 }
+
+// "Remember me" — checked (default) = session survives browser close (localStorage).
+// Unchecked = session-only, cleared when browser closes (sessionStorage).
+function glcAuthStorage() {
+  return localStorage.getItem("glc_remember_me") === "false" ? window.sessionStorage : window.localStorage;
+}

@@ -1,6 +1,13 @@
-const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+let client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+  auth: { storage: glcAuthStorage() },
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const rememberCheckbox = document.getElementById("rememberMe");
+  if (rememberCheckbox) {
+    rememberCheckbox.checked = localStorage.getItem("glc_remember_me") !== "false";
+  }
+
   const { data: { session } } = await client.auth.getSession();
   if (session) {
     await redirectByRole(session.user);
@@ -28,21 +35,27 @@ async function onLogin(e) {
   e.preventDefault();
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
+  const remember = document.getElementById("rememberMe")?.checked ?? true;
   const btn = document.getElementById("loginBtn");
   const status = document.getElementById("loginStatus");
 
+  localStorage.setItem("glc_remember_me", remember ? "true" : "false");
+  client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+    auth: { storage: glcAuthStorage() },
+  });
+
   btn.disabled = true;
-  btn.textContent = "লগইন হচ্ছে…";
+  btn.textContent = t("loggingIn");
   status.textContent = "";
   status.className = "form-status";
 
   const { data, error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
-    status.textContent = "ইমেইল অথবা পাসওয়ার্ড ভুল।";
+    status.textContent = t("loginError");
     status.className = "form-status error";
     btn.disabled = false;
-    btn.textContent = "লগইন করুন";
+    btn.textContent = t("loginBtn");
     return;
   }
 

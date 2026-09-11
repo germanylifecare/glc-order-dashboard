@@ -2,7 +2,9 @@
 // GLC Dashboard — order list + status management
 // =========================================================================
 
-const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+  auth: { storage: glcAuthStorage() },
+});
 
 const STATUS_LABELS = {
   pending_confirmation: "Pending",

@@ -2,7 +2,9 @@
 // GLC Packaging Dashboard — confirmed/packed orders + bulk pack
 // ============================================================
 
-const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+  auth: { storage: glcAuthStorage() },
+});
 
 let currentUser = null;
 let allOrders = [];

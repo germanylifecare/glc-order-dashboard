@@ -87,6 +87,9 @@ body {
   border-radius: var(--radius-sm); padding: 11px 13px; font-family: inherit; font-size: 15px; outline: none;
 }
 .form-field input:focus, .form-field textarea:focus { border-color: var(--tangerine); }
+.form-field--checkbox { flex-direction: row; align-items: center; gap: 8px; }
+.form-field--checkbox input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--tangerine); cursor: pointer; margin: 0; }
+.form-field--checkbox label { font-size: 13.5px; font-weight: 500; color: var(--text); cursor: pointer; }
 
 .form-status { text-align: center; font-size: 13.5px; font-weight: 600; min-height: 18px; margin-top: 12px; }
 .form-status.success { color: var(--success); }
