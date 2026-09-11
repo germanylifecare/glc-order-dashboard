@@ -469,7 +469,7 @@ function openLeadModal(lead) {
   const modal = document.getElementById("leadModal");
   const body = document.getElementById("leadModalBody");
   const qty = lead.quantity || 1;
-  const productTotal = CONFIG.UNIT_PRICE * qty;
+  const productTotal = bundlePrice(qty);
   const grandTotal = productTotal + CONFIG.DELIVERY_CHARGE;
 
   body.innerHTML = `
@@ -478,7 +478,7 @@ function openLeadModal(lead) {
       <div><span class="modal__label">${t("name")}</span><input type="text" id="leadName" class="modal__edit-input" value="${escapeAttr(lead.customer_name)}"></div>
       <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(lead.phone)}</span></p></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="leadDistrict" class="modal__edit-input" value="${escapeAttr(lead.district || "")}"></div>
-      <div><span class="modal__label">${t("quantity")}</span><input type="number" id="leadQuantity" class="modal__edit-input" min="1" value="${qty}"></div>
+      <div><span class="modal__label">${t("quantity")}</span><input type="number" id="leadQuantity" class="modal__edit-input" min="1" max="3" value="${qty}"></div>
       <div><span class="modal__label">${t("age")}</span><input type="number" id="leadAge" class="modal__edit-input" min="1" value="${lead.age || ""}"></div>
       <div class="modal__grid-full"><span class="modal__label">${t("address")}</span><textarea id="leadAddress" class="modal__edit-input" rows="2">${escapeHtml(lead.address || "")}</textarea></div>
     </div>
@@ -517,7 +517,7 @@ function openLeadModal(lead) {
 
   document.getElementById("leadQuantity").addEventListener("input", (e) => {
     const q = parseInt(e.target.value || "1", 10);
-    const pt = CONFIG.UNIT_PRICE * q;
+    const pt = bundlePrice(q);
     document.getElementById("leadProductTotal").textContent = pt;
     document.getElementById("leadGrandTotal").textContent = pt + CONFIG.DELIVERY_CHARGE;
   });
@@ -557,9 +557,9 @@ async function convertLead() {
     return;
   }
 
-  const unitPrice = CONFIG.UNIT_PRICE;
   const deliveryCharge = CONFIG.DELIVERY_CHARGE;
-  const productTotal = unitPrice * quantity;
+  const productTotal = bundlePrice(quantity);
+  const unitPrice = Math.round(productTotal / quantity);
   const grandTotal = productTotal + deliveryCharge;
 
   msgEl.textContent = t("updating");
@@ -891,7 +891,7 @@ function openModal(order) {
 
   document.getElementById("editQuantity").addEventListener("input", (e) => {
     const qty = parseInt(e.target.value || "1", 10);
-    const productTotal = qty * order.unit_price;
+    const productTotal = bundlePrice(qty);
     const grandTotal = productTotal + order.delivery_charge;
     document.getElementById("calcProductTotal").textContent = productTotal;
     document.getElementById("calcGrandTotal").textContent = grandTotal;
@@ -914,7 +914,7 @@ function openModal(order) {
       handled_by: document.getElementById("handledByInput").value.trim(),
     };
     const advanceType = document.getElementById("advanceTypeSelect").value;
-    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote);
+    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote, order.quantity, order.product_total, order.grand_total);
   });
 
   modal.hidden = false;
@@ -925,7 +925,7 @@ function closeModal() {
   currentModalOrder = null;
 }
 
-async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType, confirmNote) {
+async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType, confirmNote, originalQuantity, originalProductTotal, originalGrandTotal) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = t("updating");
@@ -937,8 +937,18 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     .eq("id", orderId)
     .single();
 
-  const productTotal = unitPrice * editedFields.quantity;
-  const grandTotal = productTotal + deliveryCharge;
+  // শুধু quantity সত্যিকারে বদলালে bundle price দিয়ে recalculate করো —
+  // নাহলে existing order-এর সঠিক historical total silently overwrite হয়ে যাবে
+  let productTotal, recalculatedUnitPrice, grandTotal;
+  if (editedFields.quantity !== originalQuantity) {
+    productTotal = bundlePrice(editedFields.quantity);
+    recalculatedUnitPrice = Math.round(productTotal / editedFields.quantity);
+    grandTotal = productTotal + deliveryCharge;
+  } else {
+    productTotal = originalProductTotal;
+    recalculatedUnitPrice = unitPrice;
+    grandTotal = originalGrandTotal;
+  }
 
   const updatePayload = {
     status: newStatus,
@@ -950,6 +960,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
     quantity: editedFields.quantity,
     age: editedFields.age,
     handled_by: editedFields.handled_by || null,
+    unit_price: recalculatedUnitPrice,
     product_total: productTotal,
     grand_total: grandTotal,
     advance_type: advanceType,
