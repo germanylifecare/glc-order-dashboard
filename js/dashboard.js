@@ -146,6 +146,9 @@ async function boot() {
   document.getElementById("modalClose").addEventListener("click", closeModal);
   document.getElementById("leadModalBackdrop").addEventListener("click", closeLeadModal);
   document.getElementById("leadModalClose").addEventListener("click", closeLeadModal);
+  document.getElementById("newOrderModalBackdrop").addEventListener("click", closeNewOrderModal);
+  document.getElementById("newOrderModalClose").addEventListener("click", closeNewOrderModal);
+  document.getElementById("newOrderBtn").addEventListener("click", openNewOrderModal);
 
   document.getElementById("syncSteadfastBtn").addEventListener("click", async () => {
     const btn = document.getElementById("syncSteadfastBtn");
@@ -617,6 +620,181 @@ function openLeadModal(lead) {
 function closeLeadModal() {
   document.getElementById("leadModal").hidden = true;
   currentModalLead = null;
+}
+
+function openNewOrderModal() {
+  const modal = document.getElementById("newOrderModal");
+  const body = document.getElementById("newOrderModalBody");
+  const qty = CONFIG.DEFAULT_BUNDLE_QTY || 2;
+  const productTotal = bundlePrice(qty);
+  const grandTotal = productTotal + CONFIG.DELIVERY_CHARGE;
+
+  body.innerHTML = `
+    <h2 class="modal__title">নতুন অর্ডার তৈরি করুন</h2>
+    <div class="modal__grid">
+      <div><span class="modal__label">${t("name")}</span><input type="text" id="newOrderName" class="modal__edit-input" placeholder="কাস্টমারের নাম"></div>
+      <div><span class="modal__label">${t("phone")}</span><input type="tel" id="newOrderPhone" class="modal__edit-input" placeholder="01XXXXXXXXX" maxlength="11"></div>
+      <div><span class="modal__label">${t("district")}</span><input type="text" id="newOrderDistrict" class="modal__edit-input" placeholder="জেলা"></div>
+      <div><span class="modal__label">${t("quantity")}</span><input type="number" id="newOrderQuantity" class="modal__edit-input" min="1" max="3" value="${qty}"></div>
+      <div><span class="modal__label">${t("age")}</span><input type="number" id="newOrderAge" class="modal__edit-input" min="1" placeholder="ঐচ্ছিক"></div>
+      <div class="modal__grid-full"><span class="modal__label">${t("address")}</span><textarea id="newOrderAddress" class="modal__edit-input" rows="2" placeholder="সম্পূর্ণ ঠিকানা"></textarea></div>
+    </div>
+
+    <div class="modal__payment">
+      <h4>${t("paymentVerification")}</h4>
+      <p>${t("productTotal")}: ৳<span id="newOrderProductTotal">${productTotal}</span> + ${t("delivery")}: ৳${CONFIG.DELIVERY_CHARGE} = <b>৳<span id="newOrderGrandTotal">${grandTotal}</span></b></p>
+    </div>
+
+    <div class="modal__notes">
+      <label for="newOrderPaymentMethod">${t("paymentMethodLabel")}</label>
+      <select id="newOrderPaymentMethod">
+        <option value="bkash">bKash</option>
+        <option value="nagad">Nagad</option>
+        <option value="cod">COD (ক্যাশ অন ডেলিভারি)</option>
+      </select>
+    </div>
+    <div id="newOrderAdvanceFields">
+      <div class="modal__notes">
+        <label for="newOrderSenderNumber">${t("senderNumber")} <span class="optional-tag">${t("optionalTag")}</span></label>
+        <input type="text" id="newOrderSenderNumber" placeholder="01XXXXXXXXX">
+      </div>
+      <div class="modal__notes">
+        <label for="newOrderTrxId">Transaction ID <span class="optional-tag">${t("optionalTag")}</span></label>
+        <input type="text" id="newOrderTrxId" placeholder="TrxID">
+      </div>
+    </div>
+
+    <div class="modal__notes">
+      <label for="newOrderStatus">অর্ডার স্ট্যাটাস</label>
+      <select id="newOrderStatus">
+        <option value="confirmed" selected>✅ Confirmed (কলে কথা হয়ে গেছে)</option>
+        <option value="pending_confirmation">⏳ Pending (এখনো কল করা বাকি)</option>
+      </select>
+    </div>
+    <div class="modal__notes" id="newOrderConfirmNoteWrap">
+      <label for="newOrderConfirmNote">Confirm Note <span class="optional-tag">${t("optionalTag")}</span></label>
+      <textarea id="newOrderConfirmNote" placeholder="কলে কী কথা হয়েছে (ঐচ্ছিক)"></textarea>
+    </div>
+
+    <div class="modal__notes">
+      <label for="newOrderHandledBy">${t("handledByLabel")}</label>
+      <input type="text" id="newOrderHandledBy" placeholder="${t("handledByPlaceholder")}">
+    </div>
+    <div class="modal__notes">
+      <label for="newOrderNotes">${t("salesNotes")}</label>
+      <textarea id="newOrderNotes" placeholder="${t("optionalTag")}"></textarea>
+    </div>
+
+    <button class="btn btn--primary btn--block" id="createNewOrderBtn">অর্ডার তৈরি করুন</button>
+    <p id="newOrderModalStatusMsg" class="form-status"></p>
+  `;
+
+  document.getElementById("newOrderQuantity").addEventListener("input", (e) => {
+    const q = parseInt(e.target.value || "1", 10);
+    const pt = bundlePrice(q);
+    document.getElementById("newOrderProductTotal").textContent = pt;
+    document.getElementById("newOrderGrandTotal").textContent = pt + CONFIG.DELIVERY_CHARGE;
+  });
+
+  document.getElementById("newOrderPaymentMethod").addEventListener("change", (e) => {
+    document.getElementById("newOrderAdvanceFields").style.display = e.target.value === "cod" ? "none" : "";
+  });
+
+  document.getElementById("newOrderStatus").addEventListener("change", (e) => {
+    document.getElementById("newOrderConfirmNoteWrap").style.display = e.target.value === "confirmed" ? "" : "none";
+  });
+
+  document.getElementById("createNewOrderBtn").addEventListener("click", createNewOrder);
+
+  modal.hidden = false;
+  setTimeout(() => document.getElementById("newOrderName").focus(), 50);
+}
+
+function closeNewOrderModal() {
+  document.getElementById("newOrderModal").hidden = true;
+}
+
+async function createNewOrder() {
+  const msgEl = document.getElementById("newOrderModalStatusMsg");
+  const btn = document.getElementById("createNewOrderBtn");
+
+  const name = document.getElementById("newOrderName").value.trim();
+  const phone = document.getElementById("newOrderPhone").value.trim();
+  const district = document.getElementById("newOrderDistrict").value.trim();
+  const address = document.getElementById("newOrderAddress").value.trim();
+  const quantity = parseInt(document.getElementById("newOrderQuantity").value || "1", 10);
+  const paymentMethod = document.getElementById("newOrderPaymentMethod").value;
+  const senderNumber = document.getElementById("newOrderSenderNumber").value.trim();
+  const trxId = document.getElementById("newOrderTrxId").value.trim();
+  const status = document.getElementById("newOrderStatus").value;
+  const confirmNote = document.getElementById("newOrderConfirmNote").value.trim();
+  const handledBy = document.getElementById("newOrderHandledBy").value.trim();
+  const notes = document.getElementById("newOrderNotes").value.trim();
+  const ageInput = document.getElementById("newOrderAge").value;
+  const age = ageInput ? parseInt(ageInput, 10) : null;
+
+  if (!name || !phone || !district || !address || !handledBy) {
+    msgEl.textContent = t("fillAllFields");
+    msgEl.className = "form-status error";
+    return;
+  }
+
+  if (!/^01[0-9]{9}$/.test(phone)) {
+    msgEl.textContent = "সঠিক ফোন নাম্বার দিন (01XXXXXXXXX)";
+    msgEl.className = "form-status error";
+    return;
+  }
+
+  const deliveryCharge = CONFIG.DELIVERY_CHARGE;
+  const productTotal = bundlePrice(quantity);
+  const unitPrice = Math.round(productTotal / quantity);
+  const grandTotal = productTotal + deliveryCharge;
+
+  btn.disabled = true;
+  msgEl.textContent = t("updating");
+  msgEl.className = "form-status";
+
+  const payload = {
+    customer_name: name,
+    phone,
+    address,
+    district,
+    quantity,
+    unit_price: unitPrice,
+    product_total: productTotal,
+    delivery_charge: deliveryCharge,
+    grand_total: grandTotal,
+    payment_method: paymentMethod,
+    sender_number: senderNumber || null,
+    trx_id: trxId || null,
+    age,
+    handled_by: handledBy,
+    notes: notes || null,
+    status,
+    confirmed_by: currentUser.email,
+    last_updated_by: currentUser.email,
+  };
+  if (status === "confirmed" && confirmNote) payload.confirm_note = confirmNote;
+
+  const { error } = await client.from("orders").insert(payload);
+
+  btn.disabled = false;
+
+  if (error) {
+    console.error(error);
+    if (error.message && error.message.includes("DUPLICATE_ORDER_TODAY")) {
+      msgEl.textContent = "⚠️ এই নাম্বারে আজকে ইতিমধ্যে একটা অর্ডার আছে (duplicate-order guard block করেছে)।";
+    } else {
+      msgEl.textContent = t("updateFailed") + " (" + error.message + ")";
+    }
+    msgEl.className = "form-status error";
+    return;
+  }
+
+  msgEl.textContent = t("updateSuccess");
+  msgEl.className = "form-status success";
+  await loadOrders();
+  setTimeout(closeNewOrderModal, 700);
 }
 
 async function convertLead() {
