@@ -580,6 +580,10 @@ function openLeadModal(lead) {
       <label for="leadHandledBy">${t("handledByLabel")}</label>
       <input type="text" id="leadHandledBy" placeholder="${t("handledByPlaceholder")}">
     </div>
+    <div class="modal__notes">
+      <label for="leadNotes">${t("salesNotes")}</label>
+      <textarea id="leadNotes" placeholder="${t("optionalTag")}"></textarea>
+    </div>
 
     <button class="btn btn--primary btn--block" id="convertLeadBtn">${t("convertBtn")}</button>
     <p id="leadModalStatusMsg" class="form-status"></p>
@@ -618,6 +622,7 @@ async function convertLead() {
   const senderNumber = document.getElementById("leadSenderNumber").value.trim();
   const trxId = document.getElementById("leadTrxId").value.trim();
   const handledBy = document.getElementById("leadHandledBy").value.trim();
+  const notes = document.getElementById("leadNotes").value.trim();
   const ageInput = document.getElementById("leadAge").value;
   const age = ageInput ? parseInt(ageInput, 10) : null;
 
@@ -652,6 +657,7 @@ async function convertLead() {
       trx_id: trxId || null,
       age,
       handled_by: handledBy,
+      notes: notes || null,
       status: "pending_confirmation",
       confirmed_by: currentUser.email,
       last_updated_by: currentUser.email,
