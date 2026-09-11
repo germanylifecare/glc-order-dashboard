@@ -654,7 +654,7 @@ function renderCard(order) {
   const card = document.createElement("div");
   card.className = "order-card-row";
   const paymentLabels = { bkash: "bKash", nagad: "Nagad", cod: "COD" };
-  const paymentDisplay = order.payment_method ? (paymentLabels[order.payment_method] || order.payment_method) : "";
+  const paymentDisplay = order.payment_method && (order.sender_number || order.trx_id) ? (paymentLabels[order.payment_method] || order.payment_method) : "";
   const advanceDisplay = order.advance_type === "full" ? "Full Advance" : order.advance_type === "delivery_only" ? "Delivery Advance" : "";
   const notesPreview = order.notes ? (order.notes.length > 40 ? order.notes.slice(0, 40) + "…" : order.notes) : "";
   card.innerHTML = `
