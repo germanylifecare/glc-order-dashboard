@@ -625,7 +625,7 @@ function closeLeadModal() {
 function openNewOrderModal() {
   const modal = document.getElementById("newOrderModal");
   const body = document.getElementById("newOrderModalBody");
-  const qty = CONFIG.DEFAULT_BUNDLE_QTY || 2;
+  const qty = CONFIG.DEFAULT_BUNDLE_QTY || 1;
   const productTotal = bundlePrice(qty);
   const grandTotal = productTotal + CONFIG.DELIVERY_CHARGE;
 
