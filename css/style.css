@@ -87,6 +87,14 @@ body {
   border-radius: var(--radius-sm); padding: 11px 13px; font-family: inherit; font-size: 15px; outline: none;
 }
 .form-field input:focus, .form-field textarea:focus { border-color: var(--tangerine); }
+.password-field { position: relative; display: flex; }
+.password-field input { flex: 1; padding-right: 42px; }
+.password-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: 17px; line-height: 1;
+  padding: 6px; color: var(--text-dim); border-radius: 6px;
+}
+.password-toggle:hover { color: var(--text); }
 .form-field--checkbox { flex-direction: row; align-items: center; gap: 8px; }
 .form-field--checkbox input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--tangerine); cursor: pointer; margin: 0; }
 .form-field--checkbox label { font-size: 13.5px; font-weight: 500; color: var(--text); cursor: pointer; }

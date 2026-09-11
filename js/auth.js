@@ -8,6 +8,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     rememberCheckbox.checked = localStorage.getItem("glc_remember_me") !== "false";
   }
 
+  const toggleBtn = document.getElementById("togglePasswordBtn");
+  const passwordInput = document.getElementById("password");
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = passwordInput.type === "password";
+      passwordInput.type = isHidden ? "text" : "password";
+      toggleBtn.textContent = isHidden ? "🙈" : "👁️";
+      toggleBtn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+    });
+  }
+
   const { data: { session } } = await client.auth.getSession();
   if (session) {
     await redirectByRole(session.user);
