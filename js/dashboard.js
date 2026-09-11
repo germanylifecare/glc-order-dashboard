@@ -546,7 +546,7 @@ function openLeadModal(lead) {
     <h2 class="modal__title">${t("convertLeadTitle")}</h2>
     <div class="modal__grid">
       <div><span class="modal__label">${t("name")}</span><input type="text" id="leadName" class="modal__edit-input" value="${escapeAttr(lead.customer_name)}"></div>
-      <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(lead.phone)}</span></p></div>
+      <div><span class="modal__label">${t("phone")}</span><p class="phone-copy"><span>${escapeHtml(lead.phone)}</span><button type="button" class="copy-btn" id="leadCopyPhoneBtn">${t("copy")}</button><button type="button" class="copy-btn" id="leadFraudCheckBtn">🔍 Fraud Check</button></p><p id="leadFraudCheckResult" class="form-status" style="font-size:12.5px;"></p></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="leadDistrict" class="modal__edit-input" value="${escapeAttr(lead.district || "")}"></div>
       <div><span class="modal__label">${t("quantity")}</span><input type="number" id="leadQuantity" class="modal__edit-input" min="1" max="3" value="${qty}"></div>
       <div><span class="modal__label">${t("age")}</span><input type="number" id="leadAge" class="modal__edit-input" min="1" value="${lead.age || ""}"></div>
@@ -599,6 +599,15 @@ function openLeadModal(lead) {
   document.getElementById("leadPaymentMethod").addEventListener("change", (e) => {
     document.getElementById("leadAdvanceFields").style.display = e.target.value === "cod" ? "none" : "";
   });
+
+  document.getElementById("leadCopyPhoneBtn").addEventListener("click", () => {
+    navigator.clipboard.writeText(lead.phone);
+    const btn = document.getElementById("leadCopyPhoneBtn");
+    btn.textContent = t("copied");
+    setTimeout(() => { btn.textContent = t("copy"); }, 1500);
+  });
+
+  document.getElementById("leadFraudCheckBtn").addEventListener("click", () => runLeadFraudCheck(lead));
 
   document.getElementById("convertLeadBtn").addEventListener("click", convertLead);
 
@@ -1083,6 +1092,41 @@ async function runFraudCheck(order) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: order.phone }),
+    });
+    const data = await res.json();
+
+    if (data.status !== "success" || !data.data) {
+      throw new Error(data.message || "Fraud check ব্যর্থ হয়েছে");
+    }
+
+    const summary = data.data.summary;
+    resultEl.textContent = `মোট অর্ডার: ${summary.total_parcel} · রিসিভ করেছে: ${summary.success_parcel} · বাতিল/রিসিভ করেনি: ${summary.cancelled_parcel}`;
+    resultEl.className = "form-status";
+  } catch (err) {
+    console.error("Fraud check failed:", err);
+    resultEl.textContent = "চেক করা যায়নি: " + (err.message || "Unknown error");
+    resultEl.className = "form-status";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔍 Fraud Check";
+  }
+}
+
+async function runLeadFraudCheck(lead) {
+  const resultEl = document.getElementById("leadFraudCheckResult");
+  const btn = document.getElementById("leadFraudCheckBtn");
+  if (!resultEl || !btn) return;
+
+  btn.disabled = true;
+  btn.textContent = "🔍 চেক হচ্ছে...";
+  resultEl.textContent = "";
+  resultEl.className = "form-status";
+
+  try {
+    const res = await fetch("/api/bdcourier-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: lead.phone }),
     });
     const data = await res.json();
 
