@@ -937,6 +937,9 @@ function renderCard(order) {
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">${t("copyNumber")}</button>
+      <select class="status-select-inline" data-status-select="${order.id}">
+        ${Object.keys(STATUS_LABELS).map(s => `<option value="${s}" ${s === order.status ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("")}
+      </select>
       ${
         order.status === "cancelled"
           ? `<button type="button" class="btn btn--ghost btn--sm btn--restore-ghost" data-restore-order="${order.id}">${t("restoreBtn")}</button>`
@@ -952,12 +955,43 @@ function renderCard(order) {
     btn.textContent = t("copied");
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+  card.querySelector("[data-status-select]").addEventListener("change", (e) => {
+    quickUpdateStatus(order, e.target.value);
+  });
   const cancelOrderBtn = card.querySelector("[data-cancel-order]");
   if (cancelOrderBtn) cancelOrderBtn.addEventListener("click", () => quickCancelOrder(order));
   const restoreOrderBtn = card.querySelector("[data-restore-order]");
   if (restoreOrderBtn) restoreOrderBtn.addEventListener("click", () => restoreOrder(order));
   card.querySelector("[data-open]").addEventListener("click", () => openModal(order));
   return card;
+}
+
+async function quickUpdateStatus(order, newStatus) {
+  if (newStatus === order.status) return;
+  if (newStatus === "cancelled") {
+    await quickCancelOrder(order);
+    return;
+  }
+  const { data: existing } = await client
+    .from("orders")
+    .select("confirmed_by")
+    .eq("id", order.id)
+    .single();
+
+  const updatePayload = {
+    status: newStatus,
+    last_updated_by: currentUser.email,
+  };
+  if (!existing?.confirmed_by) updatePayload.confirmed_by = currentUser.email;
+
+  const { error } = await client.from("orders").update(updatePayload).eq("id", order.id);
+  if (error) {
+    console.error(error);
+    alert(t("updateFailed"));
+    render();
+    return;
+  }
+  await loadOrders();
 }
 
 async function quickCancelOrder(order) {

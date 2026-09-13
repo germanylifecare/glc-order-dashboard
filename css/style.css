@@ -166,7 +166,12 @@ body {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .order-card-row__detail-chip b { color: var(--text); font-weight: 600; }
-.order-card-row__actions { display: flex; gap: 8px; flex-shrink: 0; }
+.order-card-row__actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+.status-select-inline {
+  background: var(--card); border: 1px solid var(--card-border); color: var(--text);
+  border-radius: 999px; padding: 8px 12px; font-family: inherit; font-size: 13px; outline: none; cursor: pointer;
+}
+.status-select-inline:focus { border-color: var(--tangerine); }
 
 .status-badge { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .3px; }
 .status-badge--pending_confirmation { background: rgba(201,138,27,0.15); color: var(--warning); }
