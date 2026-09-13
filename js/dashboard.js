@@ -931,6 +931,24 @@ function render() {
   list.forEach(order => wrap.appendChild(renderCard(order)));
 }
 
+const AGENT_AVATAR_COLORS = ["#C81E2C", "#0F6B3C", "#2F6FDB", "#8B5CF6", "#C98A1B", "#0E9488", "#D93A3A"];
+
+function getAgentInitials(name) {
+  if (!name) return "??";
+  const cleaned = name.replace(/^by\s+/i, "").trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "??";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function getAgentAvatarColor(name) {
+  if (!name) return AGENT_AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AGENT_AVATAR_COLORS[Math.abs(hash) % AGENT_AVATAR_COLORS.length];
+}
+
 function renderCard(order) {
   const card = document.createElement("div");
   card.className = "order-card-row";
@@ -938,11 +956,13 @@ function renderCard(order) {
   const paymentDisplay = order.payment_method && (order.sender_number || order.trx_id) ? (paymentLabels[order.payment_method] || order.payment_method) : "";
   const advanceDisplay = order.advance_type === "full" ? "Full Advance" : order.advance_type === "delivery_only" ? "Delivery Advance" : "";
   const notesPreview = order.notes ? (order.notes.length > 40 ? order.notes.slice(0, 40) + "…" : order.notes) : "";
+  const agentName = order.handled_by || order.confirmed_by || order.last_updated_by || "";
   card.innerHTML = `
     <div class="order-card-row__main">
       <div class="order-card-row__top">
         <span class="status-badge status-badge--${order.status}">${STATUS_LABELS[order.status] || order.status}</span>
         <span class="order-card-row__time">${formatDate(order.created_at)}</span>
+        ${agentName ? `<span class="agent-avatar" style="background:${getAgentAvatarColor(agentName)}" title="${escapeAttr(agentName)}">${getAgentInitials(agentName)}</span>` : ""}
       </div>
       <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}</h3>
       <p class="order-card-row__meta">${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")} · ৳${order.grand_total}</p>
