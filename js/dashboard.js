@@ -930,6 +930,7 @@ function renderCard(order) {
         ${advanceDisplay ? `<span class="order-card-row__detail-chip">💰 <b>${advanceDisplay}</b></span>` : ""}
         ${order.age ? `<span class="order-card-row__detail-chip">🎂 <b>${order.age}</b></span>` : ""}
         ${order.handled_by ? `<span class="order-card-row__detail-chip">👤 <b>${escapeHtml(order.handled_by)}</b></span>` : ""}
+        ${order.consignment_id ? `<span class="order-card-row__detail-chip">🚚 <b>${escapeHtml(order.steadfast_status || "created")}</b></span>` : ""}
         ${notesPreview ? `<span class="order-card-row__detail-chip">📝 ${escapeHtml(notesPreview)}</span>` : ""}
       </div>
       ${order.status === "cancelled" && order.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(order.cancel_reason)}</p>` : ""}
