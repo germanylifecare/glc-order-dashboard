@@ -1000,7 +1000,7 @@ function renderCard(order) {
       ${order.status === "cancelled" && order.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(order.cancel_reason)}</p>` : ""}
     </div>
     <div class="order-card-row__actions">
-      <button type="button" class="btn btn--ghost btn--sm" data-copy-phone="${escapeAttr(order.phone)}">${t("copyNumber")}</button>
+      <button type="button" class="btn btn--ghost btn--sm icon-btn" data-copy-phone="${escapeAttr(order.phone)}" title="${t("copyNumber")}">📋</button>
       <select class="status-select-inline" data-status-select="${order.id}">
         ${Object.keys(STATUS_LABELS).map(s => `<option value="${s}" ${s === order.status ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("")}
       </select>
@@ -1009,14 +1009,14 @@ function renderCard(order) {
           ? `<button type="button" class="btn btn--ghost btn--sm btn--restore-ghost" data-restore-order="${order.id}">${t("restoreBtn")}</button>`
           : `<button type="button" class="btn btn--ghost btn--sm btn--danger-ghost" data-cancel-order="${order.id}">${t("cancelBtn")}</button>`
       }
-      <button class="btn btn--primary btn--sm" data-open="${order.id}">${t("detailsBtn")}</button>
+      <button class="btn btn--primary btn--sm" data-open="${order.id}">👁 ${t("detailsBtn")}</button>
     </div>
   `;
   card.querySelector("[data-copy-phone]").addEventListener("click", (e) => {
     navigator.clipboard.writeText(order.phone);
     const btn = e.currentTarget;
     const original = btn.textContent;
-    btn.textContent = t("copied");
+    btn.textContent = "✅";
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
   card.querySelector("[data-status-select]").addEventListener("change", (e) => {
