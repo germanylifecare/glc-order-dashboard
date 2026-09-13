@@ -34,6 +34,9 @@ let customDateFrom = null;
 let customDateTo = null;
 let currentModalOrder = null;
 let currentModalLead = null;
+let bulkModeOn = false;
+let selectedOrderIds = new Set();
+let lastRenderedOrders = [];
 
 document.addEventListener("DOMContentLoaded", boot);
 
@@ -167,6 +170,30 @@ async function boot() {
   document.getElementById("newOrderModalBackdrop").addEventListener("click", closeNewOrderModal);
   document.getElementById("newOrderModalClose").addEventListener("click", closeNewOrderModal);
   document.getElementById("newOrderBtn").addEventListener("click", openNewOrderModal);
+
+  const bulkStatusSelect = document.getElementById("bulkStatusSelect");
+  bulkStatusSelect.innerHTML = Object.keys(STATUS_LABELS).map(s => `<option value="${s}">${STATUS_LABELS[s]}</option>`).join("");
+
+  document.getElementById("bulkModeBtn").addEventListener("click", () => {
+    bulkModeOn = !bulkModeOn;
+    document.getElementById("bulkModeBtn").classList.toggle("is-active", bulkModeOn);
+    if (!bulkModeOn) selectedOrderIds.clear();
+    updateBulkBar();
+    render();
+  });
+  document.getElementById("bulkSelectAllBtn").addEventListener("click", () => {
+    lastRenderedOrders.forEach(o => selectedOrderIds.add(o.id));
+    updateBulkBar();
+    render();
+  });
+  document.getElementById("bulkClearBtn").addEventListener("click", () => {
+    selectedOrderIds.clear();
+    updateBulkBar();
+    render();
+  });
+  document.getElementById("bulkApplyBtn").addEventListener("click", () => {
+    bulkApplyStatus(bulkStatusSelect.value);
+  });
 
   document.getElementById("syncSteadfastBtn").addEventListener("click", async () => {
     const btn = document.getElementById("syncSteadfastBtn");
@@ -950,6 +977,7 @@ function render() {
   }
   emptyMsg.hidden = true;
 
+  lastRenderedOrders = list;
   list.forEach(order => wrap.appendChild(renderCard(order)));
 }
 
@@ -973,7 +1001,7 @@ function getAgentAvatarColor(name) {
 
 function renderCard(order) {
   const card = document.createElement("div");
-  card.className = "order-card-row";
+  card.className = bulkModeOn ? "order-card-row order-card-row--bulk" : "order-card-row";
   const paymentLabels = { bkash: "bKash", nagad: "Nagad", cod: "COD" };
   const paymentDisplay = order.payment_method && (order.sender_number || order.trx_id) ? (paymentLabels[order.payment_method] || order.payment_method) : "";
   const advanceDisplay = order.advance_type === "full" ? "Full Advance" : order.advance_type === "delivery_only" ? "Delivery Advance" : "";
@@ -984,6 +1012,7 @@ function renderCard(order) {
   const orderIdShort = String(order.id).length > 10 ? String(order.id).slice(-8) : order.id;
   const isRepeatCustomer = allOrders.some(o => o.phone === order.phone && o.id !== order.id && new Date(o.created_at) < new Date(order.created_at));
   card.innerHTML = `
+    ${bulkModeOn ? `<label class="order-card-row__select"><input type="checkbox" data-bulk-select="${order.id}" ${selectedOrderIds.has(order.id) ? "checked" : ""}></label>` : ""}
     <div class="order-card-row__main">
       <div class="order-card-row__top">
         <span class="status-badge status-badge--${order.status}">${STATUS_LABELS[order.status] || order.status}</span>
@@ -1043,7 +1072,70 @@ function renderCard(order) {
   const restoreOrderBtn = card.querySelector("[data-restore-order]");
   if (restoreOrderBtn) restoreOrderBtn.addEventListener("click", () => restoreOrder(order));
   card.querySelector("[data-open]").addEventListener("click", () => openModal(order));
+  if (bulkModeOn) {
+    card.querySelector("[data-bulk-select]").addEventListener("change", (e) => {
+      if (e.target.checked) selectedOrderIds.add(order.id);
+      else selectedOrderIds.delete(order.id);
+      updateBulkBar();
+    });
+  }
   return card;
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById("bulkActionBar");
+  if (!bar) return;
+  if (!bulkModeOn) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+  document.getElementById("bulkSelectedCount").textContent = `${selectedOrderIds.size} ${t("bulkSelectedLabel")}`;
+  document.getElementById("bulkApplyBtn").disabled = selectedOrderIds.size === 0;
+}
+
+async function bulkApplyStatus(newStatus) {
+  const targets = allOrders.filter(o => selectedOrderIds.has(o.id) && o.status !== newStatus);
+  if (targets.length === 0) {
+    selectedOrderIds.clear();
+    updateBulkBar();
+    render();
+    return;
+  }
+
+  const applyBtn = document.getElementById("bulkApplyBtn");
+  applyBtn.disabled = true;
+
+  if (newStatus === "cancelled") {
+    const reason = await askReason({
+      title: t("cancelReasonModalTitle"),
+      subtitle: `${targets.length} ${t("bulkSelectedLabel")} — ${t("cancelOrderConfirm")}`,
+      placeholder: t("cancelReasonPlaceholder"),
+      confirmLabel: t("confirmCancelBtn"),
+    });
+    if (reason === null) {
+      applyBtn.disabled = false;
+      return;
+    }
+    for (const order of targets) {
+      await client.from("orders").update({
+        status: "cancelled",
+        previous_status: order.status,
+        cancel_reason: reason,
+        last_updated_by: currentUser.email,
+      }).eq("id", order.id);
+    }
+  } else {
+    for (const order of targets) {
+      const updatePayload = { status: newStatus, last_updated_by: currentUser.email };
+      if (!order.confirmed_by) updatePayload.confirmed_by = currentUser.email;
+      await client.from("orders").update(updatePayload).eq("id", order.id);
+    }
+  }
+
+  selectedOrderIds.clear();
+  await loadOrders();
+  updateBulkBar();
 }
 
 async function quickUpdateStatus(order, newStatus) {

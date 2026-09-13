@@ -65,7 +65,16 @@
     <input type="date" id="customDateTo" class="status-select-inline" hidden>
     <button id="refreshBtn" class="btn btn--ghost" data-i18n="refresh">🔄 রিফ্রেশ</button>
     <button id="syncSteadfastBtn" class="btn btn--ghost" type="button">🚚 Steadfast সিঙ্ক</button>
+    <button id="bulkModeBtn" class="btn btn--ghost" type="button" data-i18n="bulkSelectBtn">☑️ বাল্ক সিলেক্ট</button>
     <button id="newOrderBtn" class="btn btn--primary" type="button">🆕 নতুন অর্ডার</button>
+  </div>
+
+  <div id="bulkActionBar" class="bulk-action-bar" hidden>
+    <span class="bulk-action-bar__count" id="bulkSelectedCount">0</span>
+    <button id="bulkSelectAllBtn" class="btn btn--ghost btn--sm" type="button" data-i18n="bulkSelectAllBtn">সব সিলেক্ট</button>
+    <select id="bulkStatusSelect" class="status-select-inline"></select>
+    <button id="bulkApplyBtn" class="btn btn--primary btn--sm" type="button" disabled data-i18n="bulkApplyBtn">অ্যাপ্লাই</button>
+    <button id="bulkClearBtn" class="btn btn--ghost btn--sm" type="button" data-i18n="bulkClearBtn">ক্লিয়ার</button>
   </div>
 
   <div id="ordersWrap">

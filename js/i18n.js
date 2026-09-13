@@ -93,6 +93,11 @@ const I18N = {
     optionalTag: "(ঐচ্ছিক)",
     handledByLabel: "কে অর্ডার হ্যান্ডেল করেছেন",
     handledByPlaceholder: "নাম লিখুন",
+    bulkSelectBtn: "☑️ বাল্ক সিলেক্ট",
+    bulkSelectedLabel: "সিলেক্টেড",
+    bulkSelectAllBtn: "সব সিলেক্ট",
+    bulkApplyBtn: "অ্যাপ্লাই",
+    bulkClearBtn: "ক্লিয়ার",
   },
   en: {
     logout: "Logout",
@@ -184,6 +189,11 @@ const I18N = {
     optionalTag: "(Optional)",
     handledByLabel: "Handled By",
     handledByPlaceholder: "Enter name",
+    bulkSelectBtn: "☑️ Bulk Select",
+    bulkSelectedLabel: "selected",
+    bulkSelectAllBtn: "Select All",
+    bulkApplyBtn: "Apply",
+    bulkClearBtn: "Clear",
   },
 };
 
