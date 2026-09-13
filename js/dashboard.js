@@ -982,7 +982,7 @@ function renderCard(order) {
   const paidAmount = order.advance_type === "full" ? order.grand_total : order.advance_type === "delivery_only" ? order.delivery_charge : 0;
   const dueAmount = order.grand_total - paidAmount;
   const orderIdShort = String(order.id).length > 10 ? String(order.id).slice(-8) : order.id;
-  const isNewCustomer = !allOrders.some(o => o.phone === order.phone && o.id !== order.id && new Date(o.created_at) < new Date(order.created_at));
+  const isRepeatCustomer = allOrders.some(o => o.phone === order.phone && o.id !== order.id && new Date(o.created_at) < new Date(order.created_at));
   card.innerHTML = `
     <div class="order-card-row__main">
       <div class="order-card-row__top">
@@ -991,7 +991,7 @@ function renderCard(order) {
         <span class="order-card-row__time">${formatDate(order.created_at)}</span>
         ${agentName ? `<span class="agent-avatar" style="background:${getAgentAvatarColor(agentName)}" title="${escapeAttr(agentName)}">${getAgentInitials(agentName)}</span>` : ""}
       </div>
-      <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}${isNewCustomer ? ` <span class="new-customer-badge">${t("newCustomerBadge")}</span>` : ""}</h3>
+      <h3 class="order-card-row__name">${escapeHtml(order.customer_name)} <span class="customer-badge ${isRepeatCustomer ? "customer-badge--regular" : "customer-badge--new"}">${isRepeatCustomer ? t("regularCustomerBadge") : t("newCustomerBadge")}</span></h3>
       <p class="order-card-row__meta">💊 ${t("productName")} · ${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")}</p>
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
       <div class="order-card-row__details">
