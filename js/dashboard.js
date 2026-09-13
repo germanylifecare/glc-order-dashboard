@@ -1000,6 +1000,7 @@ function renderCard(order) {
         ${order.age ? `<span class="order-card-row__detail-chip">🎂 <b>${order.age}</b></span>` : ""}
         ${order.handled_by ? `<span class="order-card-row__detail-chip">👤 <b>${escapeHtml(order.handled_by)}</b></span>` : ""}
         ${order.consignment_id ? `<span class="order-card-row__detail-chip">🚚 <b>${escapeHtml(order.steadfast_status || "created")}</b></span>` : ""}
+        ${order.email ? `<span class="order-card-row__detail-chip">📧 <b>${escapeHtml(order.email)}</b></span>` : ""}
         ${order.ip_address ? `<span class="order-card-row__detail-chip">🌐 <b>${escapeHtml(order.ip_address)}</b></span>` : ""}
         ${order.device_id ? `<span class="order-card-row__detail-chip">📱 <b>${escapeHtml(String(order.device_id).slice(0, 12))}${String(order.device_id).length > 12 ? "…" : ""}</b></span>` : ""}
         ${notesPreview ? `<span class="order-card-row__detail-chip">📝 ${escapeHtml(notesPreview)}</span>` : ""}
