@@ -29,6 +29,7 @@ let allCancelledLeads = [];
 let allFollowupLeads = [];
 let activeFilter = "all";
 let searchTerm = "";
+let dateFilter = "all_time";
 let currentModalOrder = null;
 let currentModalLead = null;
 
@@ -123,6 +124,10 @@ async function boot() {
     else if (activeFilter === "lead_followup") renderFollowupLeadsList();
     else if (activeFilter === "cancelled_leads") renderCancelledLeadsList();
     else render();
+  });
+  document.getElementById("dateFilterSelect").addEventListener("change", (e) => {
+    dateFilter = e.target.value;
+    render();
   });
 
   document.querySelectorAll(".filter-tab").forEach(btn => {
@@ -885,9 +890,26 @@ function updateStats() {
   document.getElementById("statCancelled").textContent = counts.cancelled;
 }
 
+function isWithinDateFilter(createdAt, filter) {
+  if (!filter || filter === "all_time") return true;
+  const created = new Date(createdAt);
+  const now = new Date();
+  if (filter === "today") return created.toDateString() === now.toDateString();
+  if (filter === "this_week") {
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return created >= startOfWeek;
+  }
+  if (filter === "this_month") return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+  if (filter === "this_year") return created.getFullYear() === now.getFullYear();
+  return true;
+}
+
 function render() {
   let list = allOrders;
   if (activeFilter !== "all") list = list.filter(o => o.status === activeFilter);
+  if (dateFilter !== "all_time") list = list.filter(o => isWithinDateFilter(o.created_at, dateFilter));
   if (searchTerm) {
     list = list.filter(o =>
       (o.customer_name || "").toLowerCase().includes(searchTerm) ||
