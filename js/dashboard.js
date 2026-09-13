@@ -979,15 +979,20 @@ function renderCard(order) {
   const advanceDisplay = order.advance_type === "full" ? "Full Advance" : order.advance_type === "delivery_only" ? "Delivery Advance" : "";
   const notesPreview = order.notes ? (order.notes.length > 40 ? order.notes.slice(0, 40) + "…" : order.notes) : "";
   const agentName = order.handled_by || order.confirmed_by || order.last_updated_by || "";
+  const paidAmount = order.advance_type === "full" ? order.grand_total : order.advance_type === "delivery_only" ? order.delivery_charge : 0;
+  const dueAmount = order.grand_total - paidAmount;
+  const orderIdShort = String(order.id).length > 10 ? String(order.id).slice(-8) : order.id;
+  const isNewCustomer = !allOrders.some(o => o.phone === order.phone && o.id !== order.id && new Date(o.created_at) < new Date(order.created_at));
   card.innerHTML = `
     <div class="order-card-row__main">
       <div class="order-card-row__top">
         <span class="status-badge status-badge--${order.status}">${STATUS_LABELS[order.status] || order.status}</span>
+        <span class="order-card-row__order-id">#${orderIdShort}</span>
         <span class="order-card-row__time">${formatDate(order.created_at)}</span>
         ${agentName ? `<span class="agent-avatar" style="background:${getAgentAvatarColor(agentName)}" title="${escapeAttr(agentName)}">${getAgentInitials(agentName)}</span>` : ""}
       </div>
-      <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}</h3>
-      <p class="order-card-row__meta">${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")} · ৳${order.grand_total}</p>
+      <h3 class="order-card-row__name">${escapeHtml(order.customer_name)}${isNewCustomer ? ` <span class="new-customer-badge">${t("newCustomerBadge")}</span>` : ""}</h3>
+      <p class="order-card-row__meta">💊 ${t("productName")} · ${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")}</p>
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
       <div class="order-card-row__details">
         ${paymentDisplay ? `<span class="order-card-row__detail-chip">💳 <b>${escapeHtml(paymentDisplay)}</b></span>` : ""}
@@ -995,9 +1000,19 @@ function renderCard(order) {
         ${order.age ? `<span class="order-card-row__detail-chip">🎂 <b>${order.age}</b></span>` : ""}
         ${order.handled_by ? `<span class="order-card-row__detail-chip">👤 <b>${escapeHtml(order.handled_by)}</b></span>` : ""}
         ${order.consignment_id ? `<span class="order-card-row__detail-chip">🚚 <b>${escapeHtml(order.steadfast_status || "created")}</b></span>` : ""}
+        ${order.ip_address ? `<span class="order-card-row__detail-chip">🌐 <b>${escapeHtml(order.ip_address)}</b></span>` : ""}
+        ${order.device_id ? `<span class="order-card-row__detail-chip">📱 <b>${escapeHtml(String(order.device_id).slice(0, 12))}${String(order.device_id).length > 12 ? "…" : ""}</b></span>` : ""}
         ${notesPreview ? `<span class="order-card-row__detail-chip">📝 ${escapeHtml(notesPreview)}</span>` : ""}
       </div>
       ${order.status === "cancelled" && order.cancel_reason ? `<p class="order-card-row__address" style="color:var(--danger);"><b>${t("cancelReasonLabel")}:</b> ${escapeHtml(order.cancel_reason)}</p>` : ""}
+    </div>
+    <div class="order-price-box">
+      <div class="order-price-box__row"><span>${t("productTotal")}</span><span>৳${order.product_total}</span></div>
+      <div class="order-price-box__row"><span>${t("delivery")}</span><span>৳${order.delivery_charge}</span></div>
+      <div class="order-price-box__row"><span>${t("discount")}</span><span>৳0</span></div>
+      <div class="order-price-box__row order-price-box__row--paid"><span>${t("paid")}</span><span>৳${paidAmount}</span></div>
+      <div class="order-price-box__row order-price-box__row--due"><span>${t("due")}</span><span>৳${dueAmount}</span></div>
+      <div class="order-price-box__row order-price-box__row--total"><span>${t("grandTotal")}</span><span>৳${order.grand_total}</span></div>
     </div>
     <div class="order-card-row__actions">
       <button type="button" class="btn btn--ghost btn--sm icon-btn" data-copy-phone="${escapeAttr(order.phone)}" title="${t("copyNumber")}">📋</button>
@@ -1573,7 +1588,7 @@ function askReason({ title, subtitle = "", placeholder = "", initialValue = "", 
 function formatDate(iso) {
   const d = new Date(iso);
   const locale = getLang() === "en" ? "en-US" : "bn-BD";
-  return d.toLocaleString(locale, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString(locale, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
