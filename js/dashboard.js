@@ -233,6 +233,8 @@ async function boot() {
   document.getElementById("bulkUndoBtn").addEventListener("click", undoLastBulkAction);
   updateBulkUndoButton();
 
+  document.getElementById("bulkExportBtn").addEventListener("click", exportSelectedToCSV);
+
   document.getElementById("syncSteadfastBtn").addEventListener("click", async () => {
     const btn = document.getElementById("syncSteadfastBtn");
     btn.disabled = true;
@@ -1131,6 +1133,56 @@ function updateBulkBar() {
   bar.hidden = false;
   document.getElementById("bulkSelectedCount").textContent = `${selectedOrderIds.size} ${t("bulkSelectedLabel")}`;
   document.getElementById("bulkApplyBtn").disabled = selectedOrderIds.size === 0;
+  document.getElementById("bulkExportBtn").disabled = selectedOrderIds.size === 0;
+}
+
+function csvEscape(value) {
+  const str = String(value ?? "");
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function exportSelectedToCSV() {
+  const targets = allOrders.filter(o => selectedOrderIds.has(o.id));
+  if (targets.length === 0) return;
+
+  const headers = ["Order ID", "Name", "Phone", "District", "Address", "Quantity", "Payment Method", "Grand Total", "Paid", "Due", "Status", "Handled By", "Confirmed By", "Order Date"];
+  const rows = targets.map(order => {
+    const paidAmount = order.advance_type === "full" ? order.grand_total : order.advance_type === "delivery_only" ? order.delivery_charge : 0;
+    const dueAmount = order.grand_total - paidAmount;
+    return [
+      order.id,
+      order.customer_name,
+      order.phone,
+      order.district,
+      order.address,
+      order.quantity,
+      order.payment_method || "",
+      order.grand_total,
+      paidAmount,
+      dueAmount,
+      STATUS_LABELS[order.status] || order.status,
+      order.handled_by || "",
+      order.confirmed_by || "",
+      formatDate(order.created_at),
+    ];
+  });
+
+  const csvLines = [headers, ...rows].map(row => row.map(csvEscape).join(","));
+  const csvContent = "\uFEFF" + csvLines.join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.download = `glc-orders-export-${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function bulkApplyStatus(newStatus) {

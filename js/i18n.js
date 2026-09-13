@@ -98,6 +98,7 @@ const I18N = {
     bulkSelectAllBtn: "সব সিলেক্ট",
     bulkApplyBtn: "অ্যাপ্লাই",
     bulkClearBtn: "ক্লিয়ার",
+    bulkExportBtn: "📊 এক্সপোর্ট",
   },
   en: {
     logout: "Logout",
@@ -194,6 +195,7 @@ const I18N = {
     bulkSelectAllBtn: "Select All",
     bulkApplyBtn: "Apply",
     bulkClearBtn: "Clear",
+    bulkExportBtn: "📊 Export",
   },
 };
 
