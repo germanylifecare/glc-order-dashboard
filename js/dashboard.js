@@ -38,6 +38,41 @@ let bulkModeOn = false;
 let selectedOrderIds = new Set();
 let lastRenderedOrders = [];
 
+const BULK_UNDO_KEY = "glc_last_bulk_action";
+const BULK_UNDO_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+function saveBulkUndoSnapshot(targets, newStatus) {
+  try {
+    const snapshot = {
+      timestamp: Date.now(),
+      newStatus,
+      items: targets.map(o => ({ id: o.id, previous_status: o.status })),
+    };
+    localStorage.setItem(BULK_UNDO_KEY, JSON.stringify(snapshot));
+  } catch (err) {
+    console.error("Could not save bulk undo snapshot:", err);
+  }
+}
+
+function getBulkUndoSnapshot() {
+  try {
+    const raw = localStorage.getItem(BULK_UNDO_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw);
+    if (Date.now() - snap.timestamp > BULK_UNDO_EXPIRY_MS) {
+      localStorage.removeItem(BULK_UNDO_KEY);
+      return null;
+    }
+    return snap;
+  } catch (err) {
+    return null;
+  }
+}
+
+function clearBulkUndoSnapshot() {
+  localStorage.removeItem(BULK_UNDO_KEY);
+}
+
 document.addEventListener("DOMContentLoaded", boot);
 
 const STEADFAST_TERMINAL_STATUSES = ["delivered", "returned", "cancelled"];
@@ -194,6 +229,9 @@ async function boot() {
   document.getElementById("bulkApplyBtn").addEventListener("click", () => {
     bulkApplyStatus(bulkStatusSelect.value);
   });
+
+  document.getElementById("bulkUndoBtn").addEventListener("click", undoLastBulkAction);
+  updateBulkUndoButton();
 
   document.getElementById("syncSteadfastBtn").addEventListener("click", async () => {
     const btn = document.getElementById("syncSteadfastBtn");
@@ -1083,6 +1121,7 @@ function renderCard(order) {
 }
 
 function updateBulkBar() {
+  updateBulkUndoButton();
   const bar = document.getElementById("bulkActionBar");
   if (!bar) return;
   if (!bulkModeOn) {
@@ -1104,6 +1143,13 @@ async function bulkApplyStatus(newStatus) {
   }
 
   const applyBtn = document.getElementById("bulkApplyBtn");
+  const confirmMsg = getLang() === "en"
+    ? `${targets.length} orders will change to "${STATUS_LABELS[newStatus]}". Continue?`
+    : `${targets.length} টা অর্ডার "${STATUS_LABELS[newStatus]}" স্ট্যাটাসে পরিবর্তন হবে — নিশ্চিত?`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+  saveBulkUndoSnapshot(targets, newStatus);
   applyBtn.disabled = true;
 
   if (newStatus === "cancelled") {
@@ -1136,6 +1182,41 @@ async function bulkApplyStatus(newStatus) {
   selectedOrderIds.clear();
   await loadOrders();
   updateBulkBar();
+}
+
+function updateBulkUndoButton() {
+  const btn = document.getElementById("bulkUndoBtn");
+  if (!btn) return;
+  const snap = getBulkUndoSnapshot();
+  btn.hidden = !snap;
+  if (snap) {
+    const count = snap.items.length;
+    btn.textContent = getLang() === "en" ? `↩️ Undo Last Bulk Action (${count})` : `↩️ শেষ Bulk Action Undo (${count})`;
+  }
+}
+
+async function undoLastBulkAction() {
+  const snap = getBulkUndoSnapshot();
+  if (!snap) return;
+  const confirmMsg = getLang() === "en"
+    ? `Revert ${snap.items.length} orders to their previous status?`
+    : `${snap.items.length} টা অর্ডার আগের স্ট্যাটাসে ফিরিয়ে নিতে চান?`;
+  if (!confirm(confirmMsg)) return;
+
+  const btn = document.getElementById("bulkUndoBtn");
+  if (btn) btn.disabled = true;
+
+  for (const item of snap.items) {
+    await client.from("orders").update({
+      status: item.previous_status,
+      last_updated_by: currentUser.email,
+    }).eq("id", item.id);
+  }
+
+  clearBulkUndoSnapshot();
+  if (btn) btn.disabled = false;
+  await loadOrders();
+  updateBulkUndoButton();
 }
 
 async function quickUpdateStatus(order, newStatus) {
