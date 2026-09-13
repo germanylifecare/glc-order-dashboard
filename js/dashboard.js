@@ -30,6 +30,8 @@ let allFollowupLeads = [];
 let activeFilter = "all";
 let searchTerm = "";
 let dateFilter = "all_time";
+let customDateFrom = null;
+let customDateTo = null;
 let currentModalOrder = null;
 let currentModalLead = null;
 
@@ -127,6 +129,17 @@ async function boot() {
   });
   document.getElementById("dateFilterSelect").addEventListener("change", (e) => {
     dateFilter = e.target.value;
+    const showCustom = dateFilter === "custom";
+    document.getElementById("customDateFrom").hidden = !showCustom;
+    document.getElementById("customDateTo").hidden = !showCustom;
+    render();
+  });
+  document.getElementById("customDateFrom").addEventListener("change", (e) => {
+    customDateFrom = e.target.value || null;
+    render();
+  });
+  document.getElementById("customDateTo").addEventListener("change", (e) => {
+    customDateTo = e.target.value || null;
     render();
   });
 
@@ -909,7 +922,16 @@ function isWithinDateFilter(createdAt, filter) {
 function render() {
   let list = allOrders;
   if (activeFilter !== "all") list = list.filter(o => o.status === activeFilter);
-  if (dateFilter !== "all_time") list = list.filter(o => isWithinDateFilter(o.created_at, dateFilter));
+  if (dateFilter === "custom") {
+    if (customDateFrom) list = list.filter(o => new Date(o.created_at) >= new Date(customDateFrom));
+    if (customDateTo) {
+      const toEnd = new Date(customDateTo);
+      toEnd.setHours(23, 59, 59, 999);
+      list = list.filter(o => new Date(o.created_at) <= toEnd);
+    }
+  } else if (dateFilter !== "all_time") {
+    list = list.filter(o => isWithinDateFilter(o.created_at, dateFilter));
+  }
   if (searchTerm) {
     list = list.filter(o =>
       (o.customer_name || "").toLowerCase().includes(searchTerm) ||
