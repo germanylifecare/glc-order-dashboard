@@ -717,10 +717,15 @@ function openNewOrderModal() {
   body.innerHTML = `
     <h2 class="modal__title">নতুন অর্ডার তৈরি করুন</h2>
     <div class="modal__grid">
+      <div class="modal__grid-full"><span class="modal__label">প্রোডাক্ট</span>
+        <select id="newOrderProduct" class="modal__edit-input">
+          ${CONFIG.PRODUCTS.map(p => `<option value="${p.key}">${escapeHtml(p.name)}${p.tiered ? "" : ` (৳${p.unitPrice})`}</option>`).join("")}
+        </select>
+      </div>
       <div><span class="modal__label">${t("name")}</span><input type="text" id="newOrderName" class="modal__edit-input" placeholder="কাস্টমারের নাম"></div>
       <div><span class="modal__label">${t("phone")}</span><input type="tel" id="newOrderPhone" class="modal__edit-input" placeholder="01XXXXXXXXX" maxlength="11"></div>
       <div><span class="modal__label">${t("district")}</span><input type="text" id="newOrderDistrict" class="modal__edit-input" placeholder="জেলা"></div>
-      <div><span class="modal__label">${t("quantity")}</span><input type="number" id="newOrderQuantity" class="modal__edit-input" min="1" max="3" value="${qty}"></div>
+      <div><span class="modal__label">${t("quantity")}</span><input type="number" id="newOrderQuantity" class="modal__edit-input" min="1" max="10" value="${qty}"></div>
       <div><span class="modal__label">${t("age")}</span><input type="number" id="newOrderAge" class="modal__edit-input" min="1" placeholder="ঐচ্ছিক"></div>
       <div class="modal__grid-full"><span class="modal__label">${t("address")}</span><textarea id="newOrderAddress" class="modal__edit-input" rows="2" placeholder="সম্পূর্ণ ঠিকানা"></textarea></div>
     </div>
@@ -774,12 +779,15 @@ function openNewOrderModal() {
     <p id="newOrderModalStatusMsg" class="form-status"></p>
   `;
 
-  document.getElementById("newOrderQuantity").addEventListener("input", (e) => {
-    const q = parseInt(e.target.value || "1", 10);
-    const pt = bundlePrice(q);
+  function recalcNewOrderTotal() {
+    const q = parseInt(document.getElementById("newOrderQuantity").value || "1", 10);
+    const productKey = document.getElementById("newOrderProduct").value;
+    const pt = productPrice(productKey, q);
     document.getElementById("newOrderProductTotal").textContent = pt;
     document.getElementById("newOrderGrandTotal").textContent = pt + CONFIG.DELIVERY_CHARGE;
-  });
+  }
+  document.getElementById("newOrderQuantity").addEventListener("input", recalcNewOrderTotal);
+  document.getElementById("newOrderProduct").addEventListener("change", recalcNewOrderTotal);
 
   document.getElementById("newOrderPaymentMethod").addEventListener("change", (e) => {
     document.getElementById("newOrderAdvanceFields").style.display = e.target.value === "cod" ? "none" : "";
@@ -803,6 +811,7 @@ async function createNewOrder() {
   const msgEl = document.getElementById("newOrderModalStatusMsg");
   const btn = document.getElementById("createNewOrderBtn");
 
+  const product = document.getElementById("newOrderProduct").value;
   const name = document.getElementById("newOrderName").value.trim();
   const phone = document.getElementById("newOrderPhone").value.trim();
   const district = document.getElementById("newOrderDistrict").value.trim();
@@ -831,7 +840,7 @@ async function createNewOrder() {
   }
 
   const deliveryCharge = CONFIG.DELIVERY_CHARGE;
-  const productTotal = bundlePrice(quantity);
+  const productTotal = productPrice(product, quantity);
   const unitPrice = Math.round(productTotal / quantity);
   const grandTotal = productTotal + deliveryCharge;
 
@@ -840,6 +849,7 @@ async function createNewOrder() {
   msgEl.className = "form-status";
 
   const payload = {
+    product,
     customer_name: name,
     phone,
     address,
@@ -1061,7 +1071,7 @@ function renderCard(order) {
         ${agentName ? `<span class="agent-avatar" style="background:${getAgentAvatarColor(agentName)}" title="${escapeAttr(agentName)}">${getAgentInitials(agentName)}</span>` : ""}
       </div>
       <h3 class="order-card-row__name">${escapeHtml(order.customer_name)} <span class="customer-badge ${isRepeatCustomer ? "customer-badge--regular" : "customer-badge--new"}">${isRepeatCustomer ? t("regularCustomerBadge") : t("newCustomerBadge")}</span></h3>
-      <p class="order-card-row__meta">💊 ${t("productName")} · ${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")}</p>
+      <p class="order-card-row__meta">💊 ${escapeHtml(productName(order.product || "r41"))} · ${escapeHtml(order.phone)} · ${escapeHtml(order.district)} · ${order.quantity} ${t("pcs")}</p>
       <p class="order-card-row__address">${escapeHtml(order.address)}</p>
       <div class="order-card-row__details">
         ${paymentDisplay ? `<span class="order-card-row__detail-chip">💳 <b>${escapeHtml(paymentDisplay)}</b></span>` : ""}
@@ -1504,7 +1514,7 @@ function openModal(order) {
 
   document.getElementById("editQuantity").addEventListener("input", (e) => {
     const qty = parseInt(e.target.value || "1", 10);
-    const productTotal = bundlePrice(qty);
+    const productTotal = productPrice(order.product || "r41", qty);
     const grandTotal = productTotal + order.delivery_charge;
     document.getElementById("calcProductTotal").textContent = productTotal;
     document.getElementById("calcGrandTotal").textContent = grandTotal;
@@ -1527,7 +1537,7 @@ function openModal(order) {
       handled_by: document.getElementById("handledByInput").value.trim(),
     };
     const advanceType = document.getElementById("advanceTypeSelect").value;
-    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote, order.quantity, order.product_total, order.grand_total);
+    updateStatus(order.id, newStatus, editedFields, order.unit_price, order.delivery_charge, advanceType, confirmNote, order.quantity, order.product_total, order.grand_total, order.product);
   });
 
   modal.hidden = false;
@@ -1538,7 +1548,7 @@ function closeModal() {
   currentModalOrder = null;
 }
 
-async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType, confirmNote, originalQuantity, originalProductTotal, originalGrandTotal) {
+async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliveryCharge, advanceType, confirmNote, originalQuantity, originalProductTotal, originalGrandTotal, productKey) {
   const notes = document.getElementById("notesInput").value;
   const msgEl = document.getElementById("modalStatusMsg");
   msgEl.textContent = t("updating");
@@ -1554,7 +1564,7 @@ async function updateStatus(orderId, newStatus, editedFields, unitPrice, deliver
   // নাহলে existing order-এর সঠিক historical total silently overwrite হয়ে যাবে
   let productTotal, recalculatedUnitPrice, grandTotal;
   if (editedFields.quantity !== originalQuantity) {
-    productTotal = bundlePrice(editedFields.quantity);
+    productTotal = productPrice(productKey || "r41", editedFields.quantity);
     recalculatedUnitPrice = Math.round(productTotal / editedFields.quantity);
     grandTotal = productTotal + deliveryCharge;
   } else {

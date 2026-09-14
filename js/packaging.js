@@ -136,7 +136,7 @@ function renderOrders() {
               <span class="status-badge status-badge--${o.status}">${badgeLabel}</span>
               <p class="order-card-row__name">${escapeHtml(o.customer_name)}</p>
             </div>
-            <p class="order-card-row__meta">${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}${o.consignment_id ? ` · Parcel ID: ${escapeHtml(o.consignment_id)}` : ""}</p>
+            <p class="order-card-row__meta"><b>${escapeHtml(productName(o.product || "r41"))}</b> · ${escapeHtml(o.phone)} · ${escapeHtml(o.district)} · ${o.quantity} pcs · ৳${o.grand_total}${o.consignment_id ? ` · Parcel ID: ${escapeHtml(o.consignment_id)}` : ""}</p>
             <p class="order-card-row__address">${escapeHtml(o.address)}</p>
           </div>
         </div>
@@ -346,9 +346,9 @@ function printLabels(orders) {
             <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
             <tbody>
               <tr>
-                <td>${escapeHtml(CONFIG.PRODUCT_NAME)}</td>
+                <td>${escapeHtml(productName(o.product || "r41"))}</td>
                 <td>${o.quantity}</td>
-                <td>${CONFIG.MRP_PRICE}</td>
+                <td>${Math.round(o.product_total / o.quantity)}</td>
                 <td>${o.product_total}</td>
               </tr>
             </tbody>
